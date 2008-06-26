@@ -32,21 +32,15 @@ import htmlentitydefs
 
 import supybot.utils as utils
 import supybot.conf as conf
-from datetime import datetime
+import time
 from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import simplejson
 import urllib
+import urllib2
 import commands
-
-## Maximum number of days to cache the owners.list file
-MAX_OWNERS_AGE = 3
-
-## We'll pull the list from CVS until we can get it from the Package Database
-OWNERS_URL = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
-
 
 
 class Title(sgmllib.SGMLParser):
@@ -81,22 +75,45 @@ class Fedora(callbacks.Plugin):
     This should describe *how* to use this plugin."""
     threaded = True
 
-     # Our owners.list
+    # Our owners list
     owners = None
 
     # Timestamp of our owners data
-    timestamp = None 
+    owners_timestamp = None
+
+    # Cache time of owners list, in seconds
+    owners_cache = 259200
+
+    # /group/dump/
+    groupdump = None
+
+    # Timestamp of /group/dump/ data
+    groupdump_timestamp = None
+
+    # Cache time of groupdump, in seconds
+    groupdump_cache = 1800
+
+    # To get the information, we need a username and password to FAS.
+    # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
+    username = ''
+    password = ''
+
+    # URLs
+    url = {}
+    url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
+    url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
+    url["fasinfo"] = "https://admin.fedoraproject.org/accounts/user/view/%s?tg_format=json&login=Login&user_name=%s&password=%s"
 
     def _getowners(self):
         """
         Return the owners list.  If it's not already cached, grab it from
-        OWNERS_URL, and use it for MAX_OWNERS_AGE days
+        self.url["owners"], and use it for self.owners_timestamp days
         """
         if self.owners != None:
-            if (datetime.now() - self.timestamp).days <= MAX_OWNERS_AGE:
+            if (time.time() - self.owners_timestamp) <= self.owners_cache*86400:
                 return self.owners
-        self.owners = utils.web.getUrl(OWNERS_URL)
-        self.timestamp = datetime.now()
+        self.owners = urllib2.urlopen(self.url["owners"]).read()
+        self.owners_timestamp = time.time()
         return self.owners
 
     def whoowns(self, irc, msg, args, package):
@@ -118,11 +135,15 @@ class Fedora(callbacks.Plugin):
    
 
     def fas(self, irc, msg, args, name):
-        file = open('/home/mmcgrath/supybot/accounts.txt')
+        if self.groupdump != None:
+            if (time.time() - self.timestamp) <= self.groupdump_cache:
+                post = urllib.urlencode({'user_name': self.username,
+                                         'password': self.password})
+                data = urllib2.urlopen(self.url["groupdump"], post).read()
         find_name = name
         found = 0
         mystr = []
-        for f in file.readlines():
+        for f in data.readlines():
             #if not f.lower().find(find_name.lower()):
             #    continue
             try:
@@ -145,11 +166,11 @@ class Fedora(callbacks.Plugin):
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
-        #file = open('/home/mmcgrath/supybot/accounts.txt')
         if len(name) > 14:
             irc.reply(str('Error getting info for user: "%s"' % name))
             return
-        url = commands.getoutput('/usr/bin/wget -qO- "https://admin.fedoraproject.org/accounts/user/view/%s?tg_format=json&login=Login&user_name=&password="' % name)
+        url = urllib2.urlopen(self.url["fasinfo"] % name % self.username %
+                              self.password).read()
         try:
             info = simplejson.read(url)['person']
         except ValueError:
