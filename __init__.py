@@ -44,9 +44,9 @@ __author__ = supybot.Author('Mike McGrath', 'mmcgrath', 'mmcgrath@redhat.com')
 # This is a dictionary mapping supybot.Author instances to lists of
 # contributions.
 __contributors__ = {supybot.Author('Ian Weller', 'ianweller',
-                                   'ianweller@gmail.com'): ["secondary
-                                                            maintainer and code
-                                                            sanitizer"]}
+                                   'ianweller@gmail.com'): ["secondary \
+                                                            maintainer and \
+                                                            code sanitizer"]}
 
 # This is a url where the most recent plugin package can be downloaded.
 __url__ = '' # 'http://supybot.com/Members/yourname/Fedora/download'
