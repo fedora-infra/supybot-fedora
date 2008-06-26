@@ -43,7 +43,6 @@ from fedora.accounts.fas2 import AccountSystem
 
 import simplejson
 import urllib
-import urllib2
 import commands
 
 
@@ -145,30 +144,19 @@ class Fedora(callbacks.Plugin):
 
     def fas(self, irc, msg, args, name):
         if self.groupdump != None:
-            if (time.time() - self.timestamp) <= self.groupdump_cache:
-                post = urllib.urlencode({'user_name': self.username,
-                                         'password': self.password})
-                data = urllib2.urlopen(self.url["groupdump"], post).read()
+            if (time.time() - self.groupdump_timestamp) <= self.groupdump_cache:
+                self.groupdump = self.fasclient.people_by_id()
+                self.groupdump_timestamp = time.time()
         find_name = name
         found = 0
         mystr = []
-        for f in data.readlines():
-            #if not f.lower().find(find_name.lower()):
-            #    continue
-            try:
-                (username, email, name, type, number) = f.strip().split(',')
-                if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1:
-                    mystr.append(str("%s '%s' <%s>" % (username, name, email)))
-                    found += 1
-            except:
-                try:
-                    (username, email, name, name2, type, number) = f.strip().split(',')
-                    if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1 or name2.lower().find(find_name) != -1:
-                        irc.reply(str(" %s '%s %s' <%s>" % (username, name, name2, email)))
-                        found = 1
-                except:
-                    pass
-        if found == 0:
+        for f in self.groupdump:
+            username = self.groupdump[f]['username']
+            email = self.groupdump[f]['email']
+            name = self.groupdump[f]['human_name']
+            if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1:
+                mystr.append(str("%s '%s' <%s>" % (username, name, email)))
+        if len(mystr) == 0:
             irc.reply(str("'%s' Not Found!" % find_name))
         else:
             irc.reply(' - '.join(mystr))
