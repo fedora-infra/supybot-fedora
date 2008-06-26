@@ -44,7 +44,6 @@ from fedora.accounts.fas2 import AccountSystem
 import simplejson
 import urllib
 import commands
-from fedora.accounts.fas2 import AccountSystem
 
 
 class Title(sgmllib.SGMLParser):
@@ -109,11 +108,6 @@ class Fedora(callbacks.Plugin):
 
     fasclient = AccountSystem('https://admin.fedoraproject.org/accounts/', username, password)
 
-    def __init__(self):
-        self.fas = AccountSystem('https://admin.fedoraproject.org/accounts/',
-                                 self.username, self.password)
-        return self.fas.authenticate(self.username, self.password)
-
     def _getowners(self):
         """
         Return the owners list.  If it's not already cached, grab it from
@@ -147,7 +141,7 @@ class Fedora(callbacks.Plugin):
     def fas(self, irc, msg, args, name):
         if self.groupdump != None:
             if (time.time() - self.groupdump_timestamp) <= self.groupdump_cache:
-                self.groupdump = self.fas.people_by_id()
+                self.groupdump = self.fasclient.people_by_id()
                 self.groupdump_timestamp = time.time()
         find_name = name
         found = 0
