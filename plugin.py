@@ -37,6 +37,10 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+
+from fedora.client import AuthError, ServerError
+from fedora.accounts.fas2 import AccountSystem
+
 import simplejson
 import urllib
 import urllib2
@@ -102,7 +106,8 @@ class Fedora(callbacks.Plugin):
     url = {}
     url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
     url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
-    url["fasinfo"] = "https://admin.fedoraproject.org/accounts/user/view/%s?tg_format=json&login=Login&user_name=%s&password=%s"
+
+    fasclient = AccountSystem('https://admin.fedoraproject.org/accounts/', username, password)
 
     def _getowners(self):
         """
@@ -166,24 +171,18 @@ class Fedora(callbacks.Plugin):
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
-        if len(name) > 14:
-            irc.reply(str('Error getting info for user: "%s"' % name))
-            return
-        url = urllib2.urlopen(self.url["fasinfo"] % name % self.username %
-                              self.password).read()
         try:
-            info = simplejson.read(url)['person']
-        except ValueError:
+            person = self.fasclient.person_by_username(name)
+        except:
             irc.reply(str('Error getting info for user: "%s"' % name))
             return
-
-        string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s, Timezone: %s, Locale: %s, Extension: 5%s" % (info['username'], info['human_name'], info['email'], info['creation'].split(' ')[0], info['ircnick'], info['timezone'], info['locale'], info['id'])
+        string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s, Timezone: %s, Locale: %s, Extension: 5%s" % (person['username'], person['human_name'], person['email'], person['creation'].split(' ')[0], person['ircnick'], person['timezone'], person['locale'], person['id'])
         approved = ''
-        for group in info['approved_memberships']:
+        for group in person['approved_memberships']:
             approved = approved + "%s " % group['name']
 
         unapproved = ''
-        for group in info['unapproved_memberships']:
+        for group in person['unapproved_memberships']:
             unapproved = unapproved + "%s " % group['name']
 
         if approved == '':
