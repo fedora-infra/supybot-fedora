@@ -79,35 +79,39 @@ class Fedora(callbacks.Plugin):
     This should describe *how* to use this plugin."""
     threaded = True
 
-    # Our owners list
-    owners = None
+    def __init__(self, irc):
+        super(Fedora, self).__init__(irc)
 
-    # Timestamp of our owners data
-    owners_timestamp = None
+        # Our owners list
+        self.owners = None
 
-    # Cache time of owners list, in seconds
-    owners_cache = 259200
+        # Timestamp of our owners data
+        self.owners_timestamp = None
 
-    # /group/dump/
-    groupdump = None
+        # Cache time of owners list, in seconds
+        self.owners_cache = 259200
 
-    # Timestamp of /group/dump/ data
-    groupdump_timestamp = None
+        # /group/dump/
+        self.groupdump = None
 
-    # Cache time of groupdump, in seconds
-    groupdump_cache = 1800
+        # Timestamp of /group/dump/ data
+        self.groupdump_timestamp = None
 
-    # To get the information, we need a username and password to FAS.
-    # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
-    username = ''
-    password = ''
+        # Cache time of groupdump, in seconds
+        self.groupdump_cache = 1800
 
-    # URLs
-    url = {}
-    url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
-    url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
+        # To get the information, we need a username and password to FAS.
+        # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
+        self.username = self.registryValue('fas.username')
+        self.password = self.registryValue('fas.password')
 
-    fasclient = AccountSystem('https://admin.fedoraproject.org/accounts/', username, password)
+        # URLs
+        self.url = {}
+        self.url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
+        self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
+
+        self.fasclient = AccountSystem('https://admin.fedoraproject.org/accounts/', self.username, self.password)
+
 
     def _getowners(self):
         """

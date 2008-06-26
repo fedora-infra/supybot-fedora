@@ -43,6 +43,11 @@ Fedora = conf.registerPlugin('Fedora')
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
+conf.registerGroup(Fedora, 'fas')
+conf.registerGlobalValue(Fedora.fas, 'username',
+    registry.String('', """Username for the Fedora Account System""", private=True))
+conf.registerGlobalValue(Fedora.fas, 'password',
+    registry.String('', """Password for the Fedora Account System""", private=True))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
