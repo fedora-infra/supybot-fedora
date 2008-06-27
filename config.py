@@ -44,6 +44,8 @@ Fedora = conf.registerPlugin('Fedora')
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
 conf.registerGroup(Fedora, 'fas')
+conf.registerGlobalValue(Fedora.fas, 'url',
+    registry.String('', """URL for the Fedora Account System"""))
 conf.registerGlobalValue(Fedora.fas, 'username',
     registry.String('', """Username for the Fedora Account System""", private=True))
 conf.registerGlobalValue(Fedora.fas, 'password',

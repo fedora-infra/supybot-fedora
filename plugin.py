@@ -101,15 +101,16 @@ class Fedora(callbacks.Plugin):
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
+        self.fasurl = self.registryValue('fas.url')
         self.username = self.registryValue('fas.username')
         self.password = self.registryValue('fas.password')
 
+        self.fasclient = AccountSystem(self.fasurl, self.username, self.password)
         # URLs
         self.url = {}
         self.url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
         self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
 
-        self.fasclient = AccountSystem('https://admin.fedoraproject.org/accounts/', self.username, self.password)
 
 
     def _getowners(self):
