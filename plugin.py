@@ -91,13 +91,13 @@ class Fedora(callbacks.Plugin):
         self.owners_cache = 259200
 
         # /group/dump/
-        self.groupdump = None
+        self.userlist = None
 
         # Timestamp of /group/dump/ data
-        self.groupdump_timestamp = None
+        self.userlist_timestamp = None
 
-        # Cache time of groupdump, in seconds
-        self.groupdump_cache = 1800
+        # Cache time of userlist, in seconds
+        self.userlist_cache = 1800
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
@@ -108,7 +108,6 @@ class Fedora(callbacks.Plugin):
         self.fasclient = AccountSystem(self.fasurl, self.username, self.password)
         # URLs
         self.url = {}
-        self.url["groupdump"] = 'https://admin.fedoraproject.org/accounts/group/dump/'
         self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
 
 
@@ -144,19 +143,21 @@ class Fedora(callbacks.Plugin):
    
 
     def fas(self, irc, msg, args, name):
-        if self.groupdump != None:
-            if (time.time() - self.groupdump_timestamp) <= self.groupdump_cache:
-                self.groupdump = self.fasclient.people_by_id()
-                self.groupdump_timestamp = time.time()
+        if not self.userlist or (time.time() - self.userlist_timestamp) <= self.userlist_cache:
+            fulllist = self.fasclient.send_request('user/list', auth=True, input={'search': '*'})
+            self.userlist = fulllist['people'] + fulllist['unapproved_people']
+            self.userlist_timestamp = time.time()
         find_name = name
         found = 0
         mystr = []
-        for f in self.groupdump:
-            username = self.groupdump[f]['username']
-            email = self.groupdump[f]['email']
-            name = self.groupdump[f]['human_name']
-            if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1:
-                mystr.append(str("%s '%s' <%s>" % (username, name, email)))
+        for user in self.userlist:
+            username = user['username']
+            #email = user['email']
+            name = user['human_name']
+            #if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1:
+            #    mystr.append(str("%s '%s' <%s>" % (username, name, email)))
+            if username == find_name.lower() or name.lower().find(find_name.lower()) != -1:
+                mystr.append(str("%s '%s'" % (username, name)))
         if len(mystr) == 0:
             irc.reply(str("'%s' Not Found!" % find_name))
         else:
