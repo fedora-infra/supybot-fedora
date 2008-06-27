@@ -142,15 +142,16 @@ class Fedora(callbacks.Plugin):
     whoowns = wrap(whoowns, ['text'])
 
     def fas(self, irc, msg, args, find_name):
-        if not self.userlist or \
-                (time.time() - self.userlist_timestamp) <= self.userlist_cache:
+        if not self.userlist or (time.time() - self.userlist_timestamp) >= \
+           self.userlist_cache:
+            irc.reply("Just a moment, I need to rebuild the user cache...")
             self.userlist = self.fasclient.people_by_id()
             self.userlist_timestamp = time.time()
         mystr = []
         for user in self.userlist:
-            username = user['username']
-            email = user['email']
-            name = user['human_name']
+            username = self.userlist[user]['username']
+            email = self.userlist[user]['email']
+            name = self.userlist[user]['human_name']
             if username == find_name.lower() or \
                email.lower().find(find_name.lower()) != -1 or  \
                name.lower().find(find_name.lower()) != -1:
