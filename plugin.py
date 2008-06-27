@@ -45,6 +45,8 @@ import simplejson
 import urllib
 import commands
 import urllib2
+import socket
+print socket.getdefaulttimeout()
 
 
 class Title(sgmllib.SGMLParser):
@@ -105,7 +107,11 @@ class Fedora(callbacks.Plugin):
                 "packages/name/%s?tg_format=json"
 
     def _load_json(self, url):
-        return simplejson.loads(urllib2.urlopen(url).read())
+        timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(30)
+        json = simplejson.loads(utils.web.getUrl(url))
+        socket.setdefaulttimeout(timeout)
+        return json
 
     def _most(self, l):
         mostcount = 0
@@ -122,10 +128,13 @@ class Fedora(callbacks.Plugin):
         Retrieve the owner of a given package
         """
         pkg = self._load_json(self.url["package"] % package)
-        for i in pkg['packageListings']:
-            if i['collection']['branchname'] == 'devel':
-                owner = i['owneruser']
-        irc.reply("%s" % owner)
+        try:
+            for i in pkg['packageListings']:
+                if i['collection']['branchname'] == 'devel':
+                    owner = i['owneruser']
+            irc.reply("%s" % owner)
+        except KeyError:
+            irc.reply("No such package exists.")
     whoowns = wrap(whoowns, ['text'])
 
     def fas(self, irc, msg, args, find_name):
