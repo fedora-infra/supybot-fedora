@@ -76,8 +76,7 @@ class Title(sgmllib.SGMLParser):
 
 
 class Fedora(callbacks.Plugin):
-    """Add the help for "@plugin help Fedora" here
-    This should describe *how* to use this plugin."""
+    """Use this plugin to retrieve Fedora-related information."""
     threaded = True
 
     def __init__(self, irc):
@@ -117,7 +116,7 @@ class Fedora(callbacks.Plugin):
     def _getowners(self):
         """
         Return the owners list.  If it's not already cached, grab it from
-        self.url["owners"], and use it for self.owners_timestamp days
+        self.url["owners"], and use it for self.owners_timestamp seconds
         """
         if self.owners != None:
             if (time.time() - self.owners_timestamp) <= self.owners_cache:
@@ -143,6 +142,10 @@ class Fedora(callbacks.Plugin):
     whoowns = wrap(whoowns, ['text'])
 
     def fas(self, irc, msg, args, find_name):
+        """<query>
+
+        Search the Fedora Account System usernames, full names, and email
+        addresses for a match."""
         if not self.userlist or (time.time() - self.userlist_timestamp) >= \
            self.userlist_cache:
             irc.reply("Just a moment, I need to rebuild the user cache...")
@@ -171,6 +174,9 @@ class Fedora(callbacks.Plugin):
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
+        """<username>
+
+        Return information on a Fedora Account System username."""
         try:
             person = self.fasclient.person_by_username(name)
         except:
@@ -200,9 +206,9 @@ class Fedora(callbacks.Plugin):
     fasinfo = wrap(fasinfo, ['text'])
 
     def ticket(self, irc, msg, args, num):
-        """<url>
+        """<number>
 
-        Returns the HTML <title>...</title> of a URL.
+        Return the name and URL of a Fedora Infrastructure ticket.
         """
         url = 'https://fedorahosted.org/projects/fedora-infrastructure/ticket/'
         url = url + str(num)
@@ -225,9 +231,9 @@ class Fedora(callbacks.Plugin):
     ticket = wrap(ticket, ['int'])
 
     def rel(self, irc, msg, args, num):
-        """<url>
+        """<number>
 
-        Returns the HTML <title>...</title> of a URL.
+        Return the name and URL of a rel-eng ticket.
         """
         url = 'https://fedorahosted.org/projects/rel-eng/ticket/%s' % num
         size = conf.supybot.protocols.http.peekSize()
@@ -248,14 +254,17 @@ class Fedora(callbacks.Plugin):
     rel = wrap(rel, ['int'])
 
     def swedish(self, irc, msg, args):
+        """takes no arguments
+
+        Humor mmcgrath."""
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
     swedish = wrap(swedish)
 
     def bug(self, irc, msg, args, url):
-        """<url>
+        """<number>
 
-        Returns the HTML <title>...</title> of a URL.
+        Return the name and URL of a Red Hat Bugzilla ticket.
         """
         bugNum = url
         url = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s' % url
