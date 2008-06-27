@@ -30,6 +30,7 @@
 import supybot.conf as conf
 import supybot.registry as registry
 
+
 def configure(advanced):
     # This will be called by supybot to configure this module.  advanced is
     # a bool that specifies whether the user identified himself as an advanced
@@ -47,9 +48,11 @@ conf.registerGroup(Fedora, 'fas')
 conf.registerGlobalValue(Fedora.fas, 'url',
     registry.String('', """URL for the Fedora Account System"""))
 conf.registerGlobalValue(Fedora.fas, 'username',
-    registry.String('', """Username for the Fedora Account System""", private=True))
+    registry.String('', """Username for the Fedora Account System""",
+                    private=True))
 conf.registerGlobalValue(Fedora.fas, 'password',
-    registry.String('', """Password for the Fedora Account System""", private=True))
+    registry.String('', """Password for the Fedora Account System""",
+                    private=True))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

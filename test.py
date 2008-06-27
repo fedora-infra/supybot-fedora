@@ -29,8 +29,9 @@
 
 from supybot.test import *
 
+
 class FedoraTestCase(PluginTestCase):
-    plugins = ('Fedora',)
+    plugins = ('Fedora', )
 
     def testRandom(self):
         self.assertNotError('random')

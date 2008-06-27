@@ -49,6 +49,7 @@ import commands
 class Title(sgmllib.SGMLParser):
     entitydefs = htmlentitydefs.entitydefs.copy()
     entitydefs['nbsp'] = ' '
+
     def __init__(self):
         self.inTitle = False
         self.title = ''
@@ -105,12 +106,12 @@ class Fedora(callbacks.Plugin):
         self.username = self.registryValue('fas.username')
         self.password = self.registryValue('fas.password')
 
-        self.fasclient = AccountSystem(self.fasurl, self.username, self.password)
+        self.fasclient = AccountSystem(self.fasurl, self.username,
+                                       self.password)
         # URLs
         self.url = {}
-        self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/bugzilla?tg_format=plain"
-
-
+        self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/" + \
+                "bugzilla?tg_format=plain"
 
     def _getowners(self):
         """
@@ -118,7 +119,7 @@ class Fedora(callbacks.Plugin):
         self.url["owners"], and use it for self.owners_timestamp days
         """
         if self.owners != None:
-            if (time.time() - self.owners_timestamp) <= self.owners_cache*86400:
+            if (time.time() - self.owners_timestamp) <= self.owners_cache:
                 return self.owners
         self.owners = urllib2.urlopen(self.url["owners"]).read()
         self.owners_timestamp = time.time()
@@ -140,11 +141,11 @@ class Fedora(callbacks.Plugin):
         irc.reply("%s" % owner)
     whoowns = wrap(whoowns, ['text'])
 
-   
-
     def fas(self, irc, msg, args, name):
-        if not self.userlist or (time.time() - self.userlist_timestamp) <= self.userlist_cache:
-            fulllist = self.fasclient.send_request('user/list', auth=True, input={'search': '*'})
+        if not self.userlist or \
+                (time.time() - self.userlist_timestamp) <= self.userlist_cache:
+            fulllist = self.fasclient.send_request('user/list', auth=True,
+                                                   input={'search': '*'})
             self.userlist = fulllist['people'] + fulllist['unapproved_people']
             self.userlist_timestamp = time.time()
         find_name = name
@@ -154,9 +155,12 @@ class Fedora(callbacks.Plugin):
             username = user['username']
             #email = user['email']
             name = user['human_name']
-            #if username == find_name.lower() or email.lower().find(find_name.lower()) != -1 or name.lower().find(find_name.lower()) != -1:
+            #if username == find_name.lower() or email.lower().find(
+            #    find_name.lower()) != -1 or name.lower().find(
+            #        find_name.lower()) != -1:
             #    mystr.append(str("%s '%s' <%s>" % (username, name, email)))
-            if username == find_name.lower() or name.lower().find(find_name.lower()) != -1:
+            if username == find_name.lower() or name.lower().find(
+                find_name.lower()) != -1:
                 mystr.append(str("%s '%s'" % (username, name)))
         if len(mystr) == 0:
             irc.reply(str("'%s' Not Found!" % find_name))
@@ -170,7 +174,11 @@ class Fedora(callbacks.Plugin):
         except:
             irc.reply(str('Error getting info for user: "%s"' % name))
             return
-        string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s, Timezone: %s, Locale: %s, Extension: 5%s" % (person['username'], person['human_name'], person['email'], person['creation'].split(' ')[0], person['ircnick'], person['timezone'], person['locale'], person['id'])
+        string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s" + \
+                ", Timezone: %s, Locale: %s, Extension: 5%s" % \
+                (person['username'], person['human_name'], person['email'],
+                 person['creation'].split(' ')[0], person['ircnick'],
+                 person['timezone'], person['locale'], person['id'])
         approved = ''
         for group in person['approved_memberships']:
             approved = approved + "%s " % group['name']
@@ -189,14 +197,13 @@ class Fedora(callbacks.Plugin):
         irc.reply(str('Unapproved Groups: %s' % unapproved))
     fasinfo = wrap(fasinfo, ['text'])
 
-
-
     def ticket(self, irc, msg, args, num):
         """<url>
 
         Returns the HTML <title>...</title> of a URL.
         """
-        url = 'https://fedorahosted.org/projects/fedora-infrastructure/ticket/%s' % num
+        url = 'https://fedorahosted.org/projects/fedora-infrastructure/ticket/'
+        url = url + str(num)
         size = conf.supybot.protocols.http.peekSize()
         text = utils.web.getUrl(url, size=size)
         parser = Title()
@@ -206,7 +213,10 @@ class Fedora(callbacks.Plugin):
             self.log.debug('Encountered a problem parsing %u.  Title may '
                            'already be set, though', url)
         if parser.title:
-            irc.reply(str("%s - https://fedorahosted.org/projects/fedora-infrastructure/ticket/%s" % (utils.web.htmlToText(parser.title.strip()), num) ))
+            irc.reply(str("%s - https://fedorahosted.org/projects/" + \
+                          "fedora-infrastructure/ticket/%s" % (
+                              utils.web.htmlToText(parser.title.strip()),
+                              num)))
         else:
             irc.reply(format('That URL appears to have no HTML title '
                              'within the first %i bytes.', size))
@@ -227,18 +237,18 @@ class Fedora(callbacks.Plugin):
             self.log.debug('Encountered a problem parsing %u.  Title may '
                            'already be set, though', url)
         if parser.title:
-            irc.reply(str("%s - https://fedorahosted.org/projects/rel-eng/ticket/%s" % (utils.web.htmlToText(parser.title.strip()), num) ))
+            irc.reply(str(
+                "%s - https://fedorahosted.org/projects/rel-eng/ticket/%s" % (
+                    utils.web.htmlToText(parser.title.strip()), num)))
         else:
             irc.reply(format('That URL appears to have no HTML title '
                              'within the first %i bytes.', size))
     rel = wrap(rel, ['int'])
 
-
     def swedish(self, irc, msg, args):
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
     swedish = wrap(swedish)
-
 
     def bug(self, irc, msg, args, url):
         """<url>
@@ -256,7 +266,8 @@ class Fedora(callbacks.Plugin):
             self.log.debug('Encountered a problem parsing %u.  Title may '
                            'already be set, though', url)
         if parser.title:
-            irc.reply("%s - https://bugzilla.redhat.com/%i" % (utils.web.htmlToText(parser.title.strip()), bugNum))
+            irc.reply("%s - https://bugzilla.redhat.com/%i" % \
+                      (utils.web.htmlToText(parser.title.strip()), bugNum))
         else:
             irc.reply(format('That URL appears to have no HTML title '
                              'within the first %i bytes.', size))
