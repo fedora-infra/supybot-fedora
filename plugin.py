@@ -205,29 +205,30 @@ class Fedora(callbacks.Plugin):
         irc.reply('Unapproved Groups: %s' % unapproved)
     fasinfo = wrap(fasinfo, ['text'])
 
-    def ticket(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a Fedora Infrastructure ticket.
-        """
-        url = 'https://fedorahosted.org/projects/fedora-infrastructure/ticket/'
-        url = url + str(num)
+    def _ticketer(self, baseurl, num):
+        url = format(baseurl, str(num))
         size = conf.supybot.protocols.http.peekSize()
         text = utils.web.getUrl(url, size=size)
         parser = Title()
         try:
             parser.feed(text)
         except sgmllib.SGMLParseError:
-            self.log.debug('Encountered a problem parsing %u.  Title may '
-                           'already be set, though', url)
+            return format('Encountered a problem parsing %u. Title may ' +
+                          'already be set, though', url)
         if parser.title:
-            irc.reply(str("%s - https://fedorahosted.org/projects/" + \
-                          "fedora-infrastructure/ticket/%s" % (
-                              utils.web.htmlToText(parser.title.strip()),
-                              num)))
+            return utils.web.htmlToText(parser.title.strip()) + ' - ' + url
         else:
-            irc.reply(format('That URL appears to have no HTML title '
-                             'within the first %i bytes.', size))
+            return format('That URL appears to have no HTML title ' +
+                          'within the first %i bytes.', size)
+
+    def ticket(self, irc, msg, args, num):
+        """<number>
+
+        Return the name and URL of a Fedora Infrastructure ticket.
+        """
+        baseurl = 'https://fedorahosted.org/projects/fedora-infrastructure/'+\
+                'ticket/%s'
+        irc.reply(self._ticketer(baseurl, num))
     ticket = wrap(ticket, ['int'])
 
     def rel(self, irc, msg, args, num):
@@ -235,22 +236,8 @@ class Fedora(callbacks.Plugin):
 
         Return the name and URL of a rel-eng ticket.
         """
-        url = 'https://fedorahosted.org/projects/rel-eng/ticket/%s' % num
-        size = conf.supybot.protocols.http.peekSize()
-        text = utils.web.getUrl(url, size=size)
-        parser = Title()
-        try:
-            parser.feed(text)
-        except sgmllib.SGMLParseError:
-            self.log.debug('Encountered a problem parsing %u.  Title may '
-                           'already be set, though', url)
-        if parser.title:
-            irc.reply(str(
-                "%s - https://fedorahosted.org/projects/rel-eng/ticket/%s" % (
-                    utils.web.htmlToText(parser.title.strip()), num)))
-        else:
-            irc.reply(format('That URL appears to have no HTML title '
-                             'within the first %i bytes.', size))
+        baseurl = 'https://fedorahosted.org/projects/rel-eng/ticket/%s'
+        irc.reply(self._ticketer(baseurl, num))
     rel = wrap(rel, ['int'])
 
     def swedish(self, irc, msg, args):
@@ -261,27 +248,13 @@ class Fedora(callbacks.Plugin):
         irc.reply(str('bork bork bork'))
     swedish = wrap(swedish)
 
-    def bug(self, irc, msg, args, url):
+    def bug(self, irc, msg, args, num):
         """<number>
 
         Return the name and URL of a Red Hat Bugzilla ticket.
         """
-        bugNum = url
-        url = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s' % url
-        size = conf.supybot.protocols.http.peekSize()
-        text = utils.web.getUrl(url, size=size)
-        parser = Title()
-        try:
-            parser.feed(text)
-        except sgmllib.SGMLParseError:
-            self.log.debug('Encountered a problem parsing %u.  Title may '
-                           'already be set, though', url)
-        if parser.title:
-            irc.reply("%s - https://bugzilla.redhat.com/%i" % \
-                      (utils.web.htmlToText(parser.title.strip()), bugNum))
-        else:
-            irc.reply(format('That URL appears to have no HTML title '
-                             'within the first %i bytes.', size))
+        baseurl = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s'
+        irc.reply(self._ticketer(baseurl, num))
     bug = wrap(bug, ['int'])
 
 
