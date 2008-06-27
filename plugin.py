@@ -240,14 +240,6 @@ class Fedora(callbacks.Plugin):
         irc.reply(self._ticketer(baseurl, num))
     rel = wrap(rel, ['int'])
 
-    def swedish(self, irc, msg, args):
-        """takes no arguments
-
-        Humor mmcgrath."""
-        irc.reply(str('kwack kwack'))
-        irc.reply(str('bork bork bork'))
-    swedish = wrap(swedish)
-
     def bug(self, irc, msg, args, num):
         """<number>
 
@@ -256,6 +248,14 @@ class Fedora(callbacks.Plugin):
         baseurl = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s'
         irc.reply(self._ticketer(baseurl, num))
     bug = wrap(bug, ['int'])
+
+    def swedish(self, irc, msg, args):
+        """takes no arguments
+
+        Humor mmcgrath."""
+        irc.reply(str('kwack kwack'))
+        irc.reply(str('bork bork bork'))
+    swedish = wrap(swedish)
 
 
 Class = Fedora
