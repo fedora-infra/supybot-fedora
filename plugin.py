@@ -141,27 +141,20 @@ class Fedora(callbacks.Plugin):
         irc.reply("%s" % owner)
     whoowns = wrap(whoowns, ['text'])
 
-    def fas(self, irc, msg, args, name):
+    def fas(self, irc, msg, args, find_name):
         if not self.userlist or \
                 (time.time() - self.userlist_timestamp) <= self.userlist_cache:
-            fulllist = self.fasclient.send_request('user/list', auth=True,
-                                                   input={'search': '*'})
-            self.userlist = fulllist['people'] + fulllist['unapproved_people']
+            self.userlist = self.fasclient.people_by_id()
             self.userlist_timestamp = time.time()
-        find_name = name
-        found = 0
         mystr = []
         for user in self.userlist:
             username = user['username']
-            #email = user['email']
+            email = user['email']
             name = user['human_name']
-            #if username == find_name.lower() or email.lower().find(
-            #    find_name.lower()) != -1 or name.lower().find(
-            #        find_name.lower()) != -1:
-            #    mystr.append(str("%s '%s' <%s>" % (username, name, email)))
-            if username == find_name.lower() or name.lower().find(
-                find_name.lower()) != -1:
-                mystr.append(str("%s '%s'" % (username, name)))
+            if username == find_name.lower() or \
+               email.lower().find(find_name.lower()) != -1 or  \
+               name.lower().find(find_name.lower()) != -1:
+                mystr.append(str("%s '%s' <%s>" % (username, name, email)))
         if len(mystr) == 0:
             irc.reply(str("'%s' Not Found!" % find_name))
         else:
