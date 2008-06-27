@@ -44,7 +44,7 @@ from fedora.accounts.fas2 import AccountSystem
 import simplejson
 import urllib
 import commands
-from urllib2 import URLError
+import urllib2
 
 
 class Title(sgmllib.SGMLParser):
@@ -119,7 +119,7 @@ class Fedora(callbacks.Plugin):
         self.url["owners"], and use it for self.owners_timestamp seconds
         """
         if self.owners != None:
-            if (time.time() - self.owners_timestamp) <= self.owners_cache:
+            if (time.time() - self.owners_timestamp) >= self.owners_cache:
                 return self.owners
         self.owners = urllib2.urlopen(self.url["owners"]).read()
         self.owners_timestamp = time.time()
@@ -130,9 +130,13 @@ class Fedora(callbacks.Plugin):
 
         Retrieve the owner of a given package
         """
-        owners_list = self._getowners()
+        if not self.owners or (time.time() - self.owners_timestamp) >= \
+           self.userlist_cache:
+            irc.reply("Just a moment, I need to rebuild the package cache...")
+            self.owners = urllib2.urlopen(self.url["owners"]).read()
+            self.owners_timestamp = time.time()
         owner = None
-        for line in owners_list.split('\n'):
+        for line in self.owners.split('\n'):
             entry = line.strip().split('|')
             if len(entry) >= 5:
                 if entry[1] == package:
@@ -151,7 +155,7 @@ class Fedora(callbacks.Plugin):
             irc.reply("Just a moment, I need to rebuild the user cache...")
             try:
                 self.userlist = self.fasclient.people_by_id()
-            except URLError:
+            except urllib2.URLError:
                 irc.reply("There was an error getting user data. Please try "+\
                           "again.")
             #import cPickle
