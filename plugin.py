@@ -46,7 +46,6 @@ import urllib
 import commands
 import urllib2
 import socket
-print socket.getdefaulttimeout()
 
 
 class Title(sgmllib.SGMLParser):
