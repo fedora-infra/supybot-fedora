@@ -146,6 +146,8 @@ class Fedora(callbacks.Plugin):
            self.userlist_cache:
             irc.reply("Just a moment, I need to rebuild the user cache...")
             self.userlist = self.fasclient.people_by_id()
+            #import cPickle
+            #self.userlist = cPickle.load(open('/tmp/ricbot.data'))
             self.userlist_timestamp = time.time()
         mystr = []
         for user in self.userlist:
@@ -155,18 +157,18 @@ class Fedora(callbacks.Plugin):
             if username == find_name.lower() or \
                email.lower().find(find_name.lower()) != -1 or  \
                name.lower().find(find_name.lower()) != -1:
-                mystr.append(str("%s '%s' <%s>" % (username, name, email)))
+                mystr.append("%s '%s' <%s>" % (username, name, email))
         if len(mystr) == 0:
-            irc.reply(str("'%s' Not Found!" % find_name))
+            irc.reply("'%s' Not Found!" % find_name)
         else:
-            irc.reply(' - '.join(mystr))
+            irc.reply(' - '.join(mystr).encode('utf-8'))
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
         try:
             person = self.fasclient.person_by_username(name)
         except:
-            irc.reply(str('Error getting info for user: "%s"' % name))
+            irc.reply('Error getting info for user: "%s"' % name)
             return
         string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s" + \
                 ", Timezone: %s, Locale: %s, Extension: 5%s" % \
@@ -186,9 +188,9 @@ class Fedora(callbacks.Plugin):
         if unapproved == '':
             unapproved = "None"
 
-        irc.reply(str(string.encode('utf-8')))
-        irc.reply(str('Approved Groups: %s' % approved))
-        irc.reply(str('Unapproved Groups: %s' % unapproved))
+        irc.reply(string.encode('utf-8'))
+        irc.reply('Approved Groups: %s' % approved)
+        irc.reply('Unapproved Groups: %s' % unapproved)
     fasinfo = wrap(fasinfo, ['text'])
 
     def ticket(self, irc, msg, args, num):
