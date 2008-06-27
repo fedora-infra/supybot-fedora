@@ -82,15 +82,6 @@ class Fedora(callbacks.Plugin):
     def __init__(self, irc):
         super(Fedora, self).__init__(irc)
 
-        # Our owners list
-        self.owners = None
-
-        # Timestamp of our owners data
-        self.owners_timestamp = None
-
-        # Cache time of owners list, in seconds
-        self.owners_cache = 259200
-
         # /group/dump/
         self.userlist = None
 
@@ -110,38 +101,30 @@ class Fedora(callbacks.Plugin):
                                        self.password)
         # URLs
         self.url = {}
-        self.url["owners"] = "https://admin.fedoraproject.org/pkgdb/acls/" + \
-                "bugzilla?tg_format=plain"
+        self.url["package"] = "https://admin.fedoraproject.org/pkgdb/"+\
+                "packages/name/%s?tg_format=json"
 
-    def _getowners(self):
-        """
-        Return the owners list.  If it's not already cached, grab it from
-        self.url["owners"], and use it for self.owners_timestamp seconds
-        """
-        if self.owners != None:
-            if (time.time() - self.owners_timestamp) >= self.owners_cache:
-                return self.owners
-        self.owners = urllib2.urlopen(self.url["owners"]).read()
-        self.owners_timestamp = time.time()
-        return self.owners
+    def _load_json(self, url):
+        return simplejson.loads(urllib2.urlopen(url).read())
+
+    def _most(self, l):
+        mostcount = 0
+        for i in list(set(l)):
+            c = l.count(i)
+            if c > mostcount:
+                most = i
+                mostcount = c
+        return most
 
     def whoowns(self, irc, msg, args, package):
         """<package>
 
         Retrieve the owner of a given package
         """
-        if not self.owners or (time.time() - self.owners_timestamp) >= \
-           self.userlist_cache:
-            irc.reply("Just a moment, I need to rebuild the package cache...")
-            self.owners = urllib2.urlopen(self.url["owners"]).read()
-            self.owners_timestamp = time.time()
-        owner = None
-        for line in self.owners.split('\n'):
-            entry = line.strip().split('|')
-            if len(entry) >= 5:
-                if entry[1] == package:
-                    owner = entry[3]
-                    break
+        pkg = self._load_json(self.url["package"] % package)
+        for i in pkg['packageListings']:
+            if i['collection']['branchname'] == 'devel':
+                owner = i['owneruser']
         irc.reply("%s" % owner)
     whoowns = wrap(whoowns, ['text'])
 
