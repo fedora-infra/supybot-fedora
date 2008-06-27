@@ -44,6 +44,7 @@ from fedora.accounts.fas2 import AccountSystem
 import simplejson
 import urllib
 import commands
+from urllib2 import URLError
 
 
 class Title(sgmllib.SGMLParser):
@@ -145,7 +146,11 @@ class Fedora(callbacks.Plugin):
         if not self.userlist or (time.time() - self.userlist_timestamp) >= \
            self.userlist_cache:
             irc.reply("Just a moment, I need to rebuild the user cache...")
-            self.userlist = self.fasclient.people_by_id()
+            try:
+                self.userlist = self.fasclient.people_by_id()
+            except URLError:
+                irc.reply("There was an error getting user data. Please try "+\
+                          "again.")
             self.userlist_timestamp = time.time()
         mystr = []
         for user in self.userlist:
