@@ -176,14 +176,14 @@ class Fedora(callbacks.Plugin):
         except:
             irc.reply('Error getting info for user: "%s"' % name)
             return
-        string = "User: %s, Name: %s, email: %s Creation: %s, IRC Nick: %s" + \
-                ", Timezone: %s, Locale: %s, Extension: 5%s" % \
-                (person['username'], person['human_name'], person['email'],
-                 person['creation'].split(' ')[0], person['ircnick'],
-                 person['timezone'], person['locale'], person['id'])
+        person['creation'] = person['creation'].split(' ')[0]
+        string = ("User: %(username)s, Name: %(human_name)s" + \
+            ", email: %(email)s, Creation: %(creation)s" + \
+            ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s" + \
+            ", Locale: %(locale)s, Extension: 5%(id)s") % person
         approved = ''
         for group in person['approved_memberships']:
-            approved = approved + "%s " % group['name']
+            approved += group['name'] + ' '
 
         unapproved = ''
         for group in person['unapproved_memberships']:
