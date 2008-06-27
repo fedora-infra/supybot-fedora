@@ -205,6 +205,19 @@ class Fedora(callbacks.Plugin):
         irc.reply('Unapproved Groups: %s' % unapproved)
     fasinfo = wrap(fasinfo, ['text'])
 
+    def ext(self, irc, msg, args, name):
+        """<username>
+
+        Return the talk.fedoraproject.org extension number for a Fedora Account
+        System username."""
+        try:
+            person = self.fasclient.person_by_username(name)
+        except:
+            irc.reply('Error getting info for user: "%s"' % name)
+            return
+        irc.reply("5%i" % person['id'])
+    ext = wrap(ext, ['text'])
+
     def _ticketer(self, baseurl, num):
         url = format(baseurl, str(num))
         size = conf.supybot.protocols.http.peekSize()
