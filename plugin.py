@@ -113,15 +113,6 @@ class Fedora(callbacks.Plugin):
         socket.setdefaulttimeout(timeout)
         return json
 
-    def _most(self, l):
-        mostcount = 0
-        for i in list(set(l)):
-            c = l.count(i)
-            if c > mostcount:
-                most = i
-                mostcount = c
-        return most
-
     def whoowns(self, irc, msg, args, package):
         """<package>
 
