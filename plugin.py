@@ -83,14 +83,10 @@ class Fedora(callbacks.Plugin):
     def __init__(self, irc):
         super(Fedora, self).__init__(irc)
 
-        # /group/dump/
+        # caches, automatically downloaded on __init__, manually refreshed on
+        # .refresh
         self.userlist = None
-
-        # Timestamp of /group/dump/ data
-        self.userlist_timestamp = None
-
-        # Cache time of userlist, in seconds
-        self.userlist_cache = 1800
+        self.bugzacl = None
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
@@ -102,12 +98,29 @@ class Fedora(callbacks.Plugin):
                                        self.password)
         # URLs
         self.url = {}
-        self.url["package"] = "https://admin.fedoraproject.org/pkgdb/"+\
-                "packages/name/%s?tg_format=json"
+        self.url["bugzacl"] = "https://admin.fedoraproject.org/pkgdb/acls/"+\
+                "bugzilla?tg_format=json"
+
+        # fetch necessary caches
+        self._refresh()
+
+    def refresh(self):
+        """takes no arguments
+
+        Refresh the necessary caches."""
+        self.log.info("Downloading userlist cache")
+        timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(45)
+        self.userlist = self.fasclient.people_by_id()
+        socket.setdefaulttimeout(timeout)
+        self.log.info("Downloading package owners cache")
+        self.bugzacl = self._load_json(self.url["bugzacl"])['bugzillaAcls']
+    _refresh = refresh
+    refresh = wrap(refresh)
 
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
-        socket.setdefaulttimeout(30)
+        socket.setdefaulttimeout(45)
         json = simplejson.loads(utils.web.getUrl(url))
         socket.setdefaulttimeout(timeout)
         return json
@@ -117,14 +130,26 @@ class Fedora(callbacks.Plugin):
 
         Retrieve the owner of a given package
         """
-        pkg = self._load_json(self.url["package"] % package)
         try:
-            for i in pkg['packageListings']:
-                if i['collection']['branchname'] == 'devel':
-                    owner = i['owneruser']
-            irc.reply("%s" % owner)
+            mainowner = self.bugzacl['Fedora'][package]['owner']
         except KeyError:
             irc.reply("No such package exists.")
+            return
+        others = []
+        for key in self.bugzacl.keys():
+            if key == 'Fedora':
+                continue
+            try:
+                owner = self.bugzacl[key][package]['owner']
+                if owner == mainowner:
+                    continue
+            except KeyError:
+                continue
+            others.append("%s in %s" % (owner, key))
+        if others == []:
+            irc.reply(mainowner)
+        else:
+            irc.reply("%s (%s)" % (mainowner, ', '.join(others)))
     whoowns = wrap(whoowns, ['text'])
 
     def fas(self, irc, msg, args, find_name):
@@ -132,19 +157,7 @@ class Fedora(callbacks.Plugin):
 
         Search the Fedora Account System usernames, full names, and email
         addresses for a match."""
-        if not self.userlist or (time.time() - self.userlist_timestamp) >= \
-           self.userlist_cache:
-            irc.reply("Just a moment, I need to rebuild the user cache...")
-            try:
-                self.userlist = self.fasclient.people_by_id()
-            except urllib2.URLError:
-                irc.reply("There was an error getting user data. Please try "+\
-                          "again.")
-            #import cPickle
-            #self.userlist = cPickle.load(open('/tmp/ricbot.data'))
-            #cPickle.dump(self.userlist, open('/tmp/ricbot.data', 'w'))
-            self.userlist_timestamp = time.time()
-        mystr = []
+        matches = []
         for user in self.userlist:
             username = self.userlist[user]['username']
             email = self.userlist[user]['email']
@@ -152,11 +165,11 @@ class Fedora(callbacks.Plugin):
             if username == find_name.lower() or \
                email.lower().find(find_name.lower()) != -1 or  \
                name.lower().find(find_name.lower()) != -1:
-                mystr.append("%s '%s' <%s>" % (username, name, email))
-        if len(mystr) == 0:
+                matches.append("%s '%s' <%s>" % (username, name, email))
+        if len(matches) == 0:
             irc.reply("'%s' Not Found!" % find_name)
         else:
-            irc.reply(' - '.join(mystr).encode('utf-8'))
+            irc.reply(' - '.join(matches).encode('utf-8'))
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
