@@ -104,10 +104,7 @@ class Fedora(callbacks.Plugin):
         # fetch necessary caches
         self._refresh()
 
-    def refresh(self):
-        """takes no arguments
-
-        Refresh the necessary caches."""
+    def _refresh(self):
         self.log.info("Downloading userlist cache")
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
@@ -115,7 +112,12 @@ class Fedora(callbacks.Plugin):
         socket.setdefaulttimeout(timeout)
         self.log.info("Downloading package owners cache")
         self.bugzacl = self._load_json(self.url["bugzacl"])['bugzillaAcls']
-    _refresh = refresh
+
+    def refresh(self, irc, msg, args):
+        """takes no arguments
+
+        Refresh the necessary caches."""
+        self._refresh()
     refresh = wrap(refresh)
 
     def _load_json(self, url):
