@@ -38,14 +38,18 @@ import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 
-from fedora.client import AuthError, ServerError
-from fedora.accounts.fas2 import AccountSystem
+from fedora.client import AppError
+from fedora.client import AuthError
+from fedora.client import ServerError
+from fedora.client.fas2 import AccountSystem
+from fedora.client.fas2 import FASError
 
 import simplejson
 import urllib
 import commands
 import urllib2
 import socket
+#from pickle import Unpickler
 
 
 class Title(sgmllib.SGMLParser):
@@ -94,8 +98,8 @@ class Fedora(callbacks.Plugin):
         self.username = self.registryValue('fas.username')
         self.password = self.registryValue('fas.password')
 
-        self.fasclient = AccountSystem(self.fasurl, self.username,
-                                       self.password)
+        self.fasclient = AccountSystem(self.fasurl, username=self.username,
+                                       password=self.password)
         # URLs
         self.url = {}
         self.url["bugzacl"] = "https://admin.fedoraproject.org/pkgdb/acls/"+\
@@ -109,9 +113,19 @@ class Fedora(callbacks.Plugin):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
         self.userlist = self.fasclient.people_by_id()
+        #p = Unpickler(file('/tmp/userlist', 'r'))
+        #self.userlist = p.load()
+        self.faslist = []
+        for user in self.userlist:
+            username = self.userlist[user]['username'] or ""
+            email = self.userlist[user]['email'] or ""
+            name = self.userlist[user]['human_name'] or ""
+            self.faslist.append("%s '%s' <%s>" % (username, name, email))
         socket.setdefaulttimeout(timeout)
         self.log.info("Downloading package owners cache")
         self.bugzacl = self._load_json(self.url["bugzacl"])['bugzillaAcls']
+        #json = simplejson.loads(file("/tmp/bugzilla", "r").read())
+        #self.bugzacl = json['bugzillaAcls']
 
     def refresh(self, irc, msg, args):
         """takes no arguments
@@ -154,20 +168,28 @@ class Fedora(callbacks.Plugin):
             irc.reply("%s (%s)" % (mainowner, ', '.join(others)))
     whoowns = wrap(whoowns, ['text'])
 
+    def what(self, irc, msg, args, package):
+        """<package>
+
+        Returns a description of a given package.
+        """
+        try:
+            summary = self.bugzacl['Fedora'][package]['summary']
+            irc.reply("%s: %s" % (package, summary))
+        except KeyError:
+            irc.reply("No such package exists.")
+            return
+    what = wrap(what, ['text'])
+
     def fas(self, irc, msg, args, find_name):
         """<query>
 
         Search the Fedora Account System usernames, full names, and email
         addresses for a match."""
         matches = []
-        for user in self.userlist:
-            username = self.userlist[user]['username']
-            email = self.userlist[user]['email']
-            name = self.userlist[user]['human_name']
-            if username == find_name.lower() or \
-               email.lower().find(find_name.lower()) != -1 or  \
-               name.lower().find(find_name.lower()) != -1:
-                matches.append("%s '%s' <%s>" % (username, name, email))
+        for entry in self.faslist:
+            if entry.lower().find(find_name.lower()) != -1:
+                matches.append(entry)
         if len(matches) == 0:
             irc.reply("'%s' Not Found!" % find_name)
         else:
@@ -205,6 +227,19 @@ class Fedora(callbacks.Plugin):
         irc.reply('Approved Groups: %s' % approved)
         irc.reply('Unapproved Groups: %s' % unapproved)
     fasinfo = wrap(fasinfo, ['text'])
+
+    def group(self, irc, msg, args, name):
+        """<group short name>
+
+        Return information about a Fedora Account System group."""
+        try:
+            group = self.fasclient.group_by_name(name)
+            irc.reply('%s: %s' %
+                      (name, group['display_name']))
+        except AppError:
+            irc.reply('There is no group "%s".' % name)
+    group = wrap(group, ['text'])
+
 
     def ext(self, irc, msg, args, name):
         """<username>
