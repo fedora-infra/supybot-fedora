@@ -1,1 +1,3 @@
 - fas should also search by IRC nick
+- wiki [[Page name]] snarfer that prints back a link to the wiki (maybe even
+  check for redirects, too)
