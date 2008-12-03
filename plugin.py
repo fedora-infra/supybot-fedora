@@ -112,11 +112,11 @@ class Fedora(callbacks.Plugin):
         self.log.info("Downloading userlist cache")
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
-        self.userlist = self.fasclient.people_by_id()
+        userlist = self.fasclient.people_by_id()
         #p = Unpickler(file('/tmp/userlist', 'r'))
         #self.userlist = p.load()
         self.faslist = []
-        for user in self.userlist:
+        for user in userlist:
             username = self.userlist[user]['username'] or ""
             email = self.userlist[user]['email'] or ""
             name = self.userlist[user]['human_name'] or ""
