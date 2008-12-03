@@ -1,0 +1,1 @@
+- fas should also search by IRC nick
