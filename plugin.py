@@ -49,7 +49,6 @@ import urllib
 import commands
 import urllib2
 import socket
-#from pickle import Unpickler
 
 
 class Title(sgmllib.SGMLParser):
@@ -109,21 +108,30 @@ class Fedora(callbacks.Plugin):
         self._refresh()
 
     def _refresh(self):
-        self.log.info("Downloading userlist cache")
         timeout = socket.getdefaulttimeout()
-        socket.setdefaulttimeout(45)
-        userlist = self.fasclient.people_by_id()
-        #p = Unpickler(file('/tmp/userlist', 'r'))
-        #self.userlist = p.load()
-        self.faslist = []
-        for user in userlist:
-            username = self.userlist[user]['username'] or ""
-            email = self.userlist[user]['email'] or ""
-            name = self.userlist[user]['human_name'] or ""
-            self.faslist.append("%s '%s' <%s>" % (username, name, email))
-        socket.setdefaulttimeout(timeout)
+        socket.setdefaulttimeout(None)
+        self.log.info("Downloading user data")
+        request = self.fasclient.send_request('/user/list',
+                                              req_params={'search': '*'},
+                                              auth=True)
+        users = request['people'] + request['unapproved_people']
+        del request
+        self.log.info("Caching necessary user data")
+        self.users = {}
+        self.faslist = {}
+        for user in users:
+            name = user['username']
+            self.users[name] = {}
+            self.users[name]['id'] = user['id']
+            key = ' '.join([user['username'], user['email'] or '',
+                            user['human_name'] or '', user['ircnick'] or ''])
+            key = key.lower()
+            value = "%s '%s' <%s>" % (user['username'], user['human_name'] or
+                                      '', user['email'] or '')
+            self.faslist[key] = value
         self.log.info("Downloading package owners cache")
         self.bugzacl = self._load_json(self.url["bugzacl"])['bugzillaAcls']
+        socket.setdefaulttimeout(timeout)
         #json = simplejson.loads(file("/tmp/bugzilla", "r").read())
         #self.bugzacl = json['bugzillaAcls']
 
@@ -187,13 +195,16 @@ class Fedora(callbacks.Plugin):
         Search the Fedora Account System usernames, full names, and email
         addresses for a match."""
         matches = []
-        for entry in self.faslist:
-            if entry.lower().find(find_name.lower()) != -1:
+        for entry in self.faslist.keys():
+            if entry.find(find_name.lower()) != -1:
                 matches.append(entry)
         if len(matches) == 0:
             irc.reply("'%s' Not Found!" % find_name)
         else:
-            irc.reply(' - '.join(matches).encode('utf-8'))
+            output = []
+            for match in matches:
+                output.append(self.faslist[match])
+            irc.reply(' - '.join(output).encode('utf-8'))
     fas = wrap(fas, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
@@ -240,18 +251,15 @@ class Fedora(callbacks.Plugin):
             irc.reply('There is no group "%s".' % name)
     group = wrap(group, ['text'])
 
-
     def ext(self, irc, msg, args, name):
         """<username>
 
         Return the talk.fedoraproject.org extension number for a Fedora Account
         System username."""
-        try:
-            person = self.fasclient.person_by_username(name)
-        except:
-            irc.reply('Error getting info for user: "%s"' % name)
-            return
-        irc.reply("5%i" % person['id'])
+        if name in self.users.keys():
+            irc.reply('5' + str(self.users[name]['id']))
+        else:
+            irc.reply("User %s doesn't exist" % name)
     ext = wrap(ext, ['text'])
 
     def _ticketer(self, baseurl, num):
@@ -275,8 +283,7 @@ class Fedora(callbacks.Plugin):
 
         Return the name and URL of a Fedora Infrastructure ticket.
         """
-        baseurl = 'https://fedorahosted.org/projects/fedora-infrastructure/'+\
-                'ticket/%s'
+        baseurl = 'https://fedorahosted.org/fedora-infrastructure/ticket/%s'
         irc.reply(self._ticketer(baseurl, num))
     ticket = wrap(ticket, ['int'])
 
@@ -285,7 +292,7 @@ class Fedora(callbacks.Plugin):
 
         Return the name and URL of a rel-eng ticket.
         """
-        baseurl = 'https://fedorahosted.org/projects/rel-eng/ticket/%s'
+        baseurl = 'https://fedorahosted.org/rel-eng/ticket/%s'
         irc.reply(self._ticketer(baseurl, num))
     rel = wrap(rel, ['int'])
 
