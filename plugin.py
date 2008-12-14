@@ -313,6 +313,20 @@ class Fedora(callbacks.Plugin):
         irc.reply(str('bork bork bork'))
     swedish = wrap(swedish)
 
+    def wikilink(self, irc, msg, args, name):
+        """<username>
+
+        Return MediaWiki link syntax for a FAS user's page on the wiki."""
+        try:
+            person = self.fasclient.person_by_username(name)
+        except:
+            irc.reply('Error getting info for user: "%s"' % name)
+            return
+        username = person["username"][0].capitalize()+person["username"][1:]
+        string = "[[User:%s|%s]]" % (username, person["human_name"])
+        irc.reply(string.encode('utf-8'))
+    wikilink = wrap(wikilink, ['text'])
+
 
 Class = Fedora
 
