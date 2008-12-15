@@ -216,6 +216,9 @@ class Fedora(callbacks.Plugin):
         except:
             irc.reply('Error getting info for user: "%s"' % name)
             return
+        if not person:
+            irc.reply('User "%s" doesn\'t exist' % name)
+            return
         person['creation'] = person['creation'].split(' ')[0]
         string = ("User: %(username)s, Name: %(human_name)s" + \
             ", email: %(email)s, Creation: %(creation)s" + \
