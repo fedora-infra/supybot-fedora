@@ -344,6 +344,9 @@ class Fedora(callbacks.Plugin):
         except:
             irc.reply('Error getting info for user: "%s"' % name)
             return
+        if not person:
+            irc.reply('User "%s" doesn\'t exist' % name)
+            return
         username = person["username"][0].capitalize()+person["username"][1:]
         string = "[[User:%s|%s]]" % (username, person["human_name"])
         irc.reply(string.encode('utf-8'))
