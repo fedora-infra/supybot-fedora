@@ -43,6 +43,7 @@ from fedora.client import AuthError
 from fedora.client import ServerError
 from fedora.client.fas2 import AccountSystem
 from fedora.client.fas2 import FASError
+from fedora.client.pkgdb import PackageDB
 
 import simplejson
 import urllib
@@ -99,6 +100,7 @@ class Fedora(callbacks.Plugin):
 
         self.fasclient = AccountSystem(self.fasurl, username=self.username,
                                        password=self.password)
+        self.pkgdb = PackageDB()
         # URLs
         self.url = {}
         self.url["bugzacl"] = "https://admin.fedoraproject.org/pkgdb/acls/"+\
@@ -175,6 +177,23 @@ class Fedora(callbacks.Plugin):
         else:
             irc.reply("%s (%s)" % (mainowner, ', '.join(others)))
     whoowns = wrap(whoowns, ['text'])
+
+    def branches(self, irc, msg, args, package):
+        """<package>
+
+        Return the branches a package is in."""
+        try:
+            pkginfo = self.pkgdb.get_package_info(package)
+        except AppError:
+            irc.reply("No such package exists.")
+            return
+        branch_list = []
+        for listing in pkginfo['packageListings']:
+            branch_list.append(listing['collection']['branchname'])
+        branch_list.sort()
+        irc.reply(' '.join(branch_list))
+        return
+    branches = wrap(branches, ['text'])
 
     def what(self, irc, msg, args, package):
         """<package>
