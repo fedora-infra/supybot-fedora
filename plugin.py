@@ -309,6 +309,15 @@ class Fedora(callbacks.Plugin):
         irc.reply(self._ticketer(baseurl, num))
     ticket = wrap(ticket, ['int'])
 
+    def fesco(self, irc, msg, args, num):
+        """<number>
+
+        Return the name and URL of a FESCo ticket.
+        """
+        baseurl = 'https://fedorahosted.org/fesco/ticket/%s'
+        irc.reply(self._ticketer(baseurl, num))
+    rel = wrap(rel, ['int'])
+
     def rel(self, irc, msg, args, num):
         """<number>
 
