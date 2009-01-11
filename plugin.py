@@ -51,6 +51,8 @@ import commands
 import urllib2
 import socket
 
+from __init__ import __version__
+
 
 class Title(sgmllib.SGMLParser):
     entitydefs = htmlentitydefs.entitydefs.copy()
@@ -342,6 +344,7 @@ class Fedora(callbacks.Plugin):
         Humor mmcgrath."""
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
+        irc.reply(str('(supybot-fedora version %s)' % __version__))
     swedish = wrap(swedish)
 
     def wikilink(self, irc, msg, args, name):
