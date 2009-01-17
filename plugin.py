@@ -359,7 +359,8 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('User "%s" doesn\'t exist' % name)
             return
-        string = "[[User:%s|%s]]" % (person["username"], person["human_name"])
+        string = "[[User:%s|%s]]" % (person["username"],
+                                     person["human_name"] or '')
         irc.reply(string.encode('utf-8'))
     wikilink = wrap(wikilink, ['text'])
 
