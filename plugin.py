@@ -244,7 +244,8 @@ class Fedora(callbacks.Plugin):
         string = ("User: %(username)s, Name: %(human_name)s" + \
             ", email: %(email)s, Creation: %(creation)s" + \
             ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s" + \
-            ", Locale: %(locale)s, Extension: 5%(id)s") % person
+            ", Locale: %(locale)s, Extension: 5%(id)s" + \
+            ", GPG key ID: %(gpg_keyid)s") % person
         approved = ''
         for group in person['approved_memberships']:
             approved += group['name'] + ' '
