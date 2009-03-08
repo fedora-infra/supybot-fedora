@@ -144,6 +144,7 @@ class Fedora(callbacks.Plugin):
 
         Refresh the necessary caches."""
         self._refresh()
+        return True
     refresh = wrap(refresh)
 
     def _load_json(self, url):
