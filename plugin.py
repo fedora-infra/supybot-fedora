@@ -289,7 +289,7 @@ class Fedora(callbacks.Plugin):
                 if person['role_type'] == 'sponsor':
                     sponsors += person['username'] + ' '
                 elif person['role_type'] == 'administrator':
-                    sponsors += person['username'] + ' '
+                    sponsors += '@' + person['username'] + ' '
             irc.reply('Sponsors for %s: %s' % (name, sponsors))
         except AppError:
             irc.reply('There is no group %s.' % name)
