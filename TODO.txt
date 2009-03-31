@@ -4,5 +4,3 @@
   disabled (not currently possible, the config setting is only readable by
   that user, not anybody)
 - function to query the last time the cache was refreshed
-- make denotations to whether a user is a sponsor or admin in a group in
-  .fasinfo

@@ -1,8 +1,8 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           supybot-fedora
-Version:        0.2.3
-Release:        2%{?dist}
+Version:        0.2.4
+Release:        1%{?dist}
 Summary:        Plugin for Supybot to interact with Fedora services
 
 Group:          Applications/Internet
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Sun Jan 25 2009 Jon Stanley <jonstanley@gmail.com> - 0.2.4-1
+- New upstream 0.2.4
+
 * Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.2.3-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
 
