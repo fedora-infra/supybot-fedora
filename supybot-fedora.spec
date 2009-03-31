@@ -54,7 +54,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Sun Jan 25 2009 Jon Stanley <jonstanley@gmail.com> - 0.2.4-1
+* Mon Mar 30 2009 Jon Stanley <jonstanley@gmail.com> - 0.2.4-1
 - New upstream 0.2.4
 
 * Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.2.3-2
