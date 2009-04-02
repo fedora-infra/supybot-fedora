@@ -296,6 +296,26 @@ class Fedora(callbacks.Plugin):
 
     sponsors = wrap(sponsors, ['text'])
 
+    def members(self, irc, msg, args, name):
+        """<group short name>
+
+        Return a list of members of the specified group"""
+        try:
+            group = self.fasclient.group_members(name)
+            members = ''
+            for person in group:
+                if person['role_type'] == 'administrator':
+                    members += '@' + person['username'] + ' '
+                elif person['role_type'] == 'sponsor':
+                    members += '+' + person['username'] + ' '
+                else:
+                    members += person['username'] + ' '
+            irc.reply('Members of %s: %s' % (name, members))
+        except AppError:
+            irc.reply('There is no group %s.' % name)
+
+    members = wrap(members, ['text'])
+
     def ext(self, irc, msg, args, name):
         """<username>
 
@@ -358,6 +378,15 @@ class Fedora(callbacks.Plugin):
         baseurl = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s'
         irc.reply(self._ticketer(baseurl, num))
     bug = wrap(bug, ['int'])
+
+    def swbug(self, irc, msg, args, num):
+        """<number>
+
+        Return the name and URL of a Sourceware Bugzilla ticket.
+        """
+        baseurl='http://sourceware.org/bugzilla/show_bug.cgi?id=%s'
+        irc.reply(self._ticketer(baseurl, num))
+    swbug = wrap(swbug, ['int'])
 
     def swedish(self, irc, msg, args):
         """takes no arguments
