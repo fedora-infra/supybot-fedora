@@ -370,6 +370,15 @@ class Fedora(callbacks.Plugin):
         irc.reply(self._ticketer(baseurl, num))
     rel = wrap(rel, ['int'])
 
+    def design(self, irc, msg, args, num):
+        """<number>
+
+        Return the name and URL of a Design Team ticket.
+        """
+        baseurl = 'https://fedorahosted.org/design-team/ticket/%s'
+        irc.reply(self._ticketer(baseurl, num))
+    design = wrap(design, ['int'])
+
     def bug(self, irc, msg, args, num):
         """<number>
 
