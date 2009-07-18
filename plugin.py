@@ -339,17 +339,13 @@ class Fedora(callbacks.Plugin):
         try:
             parser.feed(text)
         except sgmllib.SGMLParseError:
-            irc.reply(format('Encountered a problem parsing %u. Title may ' +
-                'already be set, though', url))
-            return
+            irc.reply(format('Encountered a problem parsing %u', url))
         if parser.title:
             irc.reply(utils.web.htmlToText(parser.title.strip()) + ' - ' + url)
-            return
         else:
             irc.reply(format('That URL appears to have no HTML title ' +
                 'within the first %i bytes.', size))
-            return
-    showticket = wrap(showticket, ['text', 'int'])
+    showticket = wrap(showticket, ['httpUrl', 'int'])
 
     def swedish(self, irc, msg, args):
         """takes no arguments
