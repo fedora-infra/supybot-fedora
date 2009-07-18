@@ -327,12 +327,12 @@ class Fedora(callbacks.Plugin):
             irc.reply("User %s doesn't exist" % name)
     ext = wrap(ext, ['text'])
 
-    def showticket(self, irc, msg, args, baseurl, num):
+    def showticket(self, irc, msg, args, baseurl, number):
         """<baseurl> <number>
 
         Return the name and URL of a trac ticket or bugzilla bug.
         """
-        url = format(baseurl, str(num))
+        url = format(baseurl, str(number))
         size = conf.supybot.protocols.http.peekSize()
         text = utils.web.getUrl(url, size=size)
         parser = Title()
