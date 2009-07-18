@@ -328,7 +328,7 @@ class Fedora(callbacks.Plugin):
     ext = wrap(ext, ['text'])
 
     def showticket(self, irc, msg, args, baseurl, num):
-        """<number>
+        """<baseurl> <number>
 
         Return the name and URL of a trac ticket or bugzilla bug.
         """
@@ -339,13 +339,16 @@ class Fedora(callbacks.Plugin):
         try:
             parser.feed(text)
         except sgmllib.SGMLParseError:
-            return format('Encountered a problem parsing %u. Title may ' +
-                          'already be set, though', url)
+            irc.reply(format('Encountered a problem parsing %u. Title may ' +
+                'already be set, though', url))
+            return
         if parser.title:
-            return utils.web.htmlToText(parser.title.strip()) + ' - ' + url
+            irc.reply(utils.web.htmlToText(parser.title.strip()) + ' - ' + url)
+            return
         else:
-            return format('That URL appears to have no HTML title ' +
-                          'within the first %i bytes.', size)
+            irc.reply(format('That URL appears to have no HTML title ' +
+                'within the first %i bytes.', size))
+            return
     showticket = wrap(showticket, ['text', 'int'])
 
     def swedish(self, irc, msg, args):
