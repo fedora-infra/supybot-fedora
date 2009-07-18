@@ -327,7 +327,11 @@ class Fedora(callbacks.Plugin):
             irc.reply("User %s doesn't exist" % name)
     ext = wrap(ext, ['text'])
 
-    def _ticketer(self, baseurl, num):
+    def showticket(self, irc, msg, args, baseurl, num):
+        """<number>
+
+        Return the name and URL of a trac ticket or bugzilla bug.
+        """
         url = format(baseurl, str(num))
         size = conf.supybot.protocols.http.peekSize()
         text = utils.web.getUrl(url, size=size)
@@ -342,60 +346,7 @@ class Fedora(callbacks.Plugin):
         else:
             return format('That URL appears to have no HTML title ' +
                           'within the first %i bytes.', size)
-
-    def ticket(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a Fedora Infrastructure ticket.
-        """
-        baseurl = 'https://fedorahosted.org/fedora-infrastructure/ticket/%s'
-        irc.reply(self._ticketer(baseurl, num))
-    ticket = wrap(ticket, ['int'])
-
-    def fesco(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a FESCo ticket.
-        """
-        baseurl = 'https://fedorahosted.org/fesco/ticket/%s'
-        irc.reply(self._ticketer(baseurl, num))
-    fesco = wrap(fesco, ['int'])
-
-    def rel(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a rel-eng ticket.
-        """
-        baseurl = 'https://fedorahosted.org/rel-eng/ticket/%s'
-        irc.reply(self._ticketer(baseurl, num))
-    rel = wrap(rel, ['int'])
-
-    def design(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a Design Team ticket.
-        """
-        baseurl = 'https://fedorahosted.org/design-team/ticket/%s'
-        irc.reply(self._ticketer(baseurl, num))
-    design = wrap(design, ['int'])
-
-    def bug(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a Red Hat Bugzilla ticket.
-        """
-        baseurl = 'https://bugzilla.redhat.com/show_bug.cgi?id=%s'
-        irc.reply(self._ticketer(baseurl, num))
-    bug = wrap(bug, ['int'])
-
-    def swbug(self, irc, msg, args, num):
-        """<number>
-
-        Return the name and URL of a Sourceware Bugzilla ticket.
-        """
-        baseurl='http://sourceware.org/bugzilla/show_bug.cgi?id=%s'
-        irc.reply(self._ticketer(baseurl, num))
-    swbug = wrap(swbug, ['int'])
+    showticket = wrap(showticket, ['text', 'int'])
 
     def swedish(self, irc, msg, args):
         """takes no arguments
