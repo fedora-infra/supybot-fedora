@@ -390,6 +390,19 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     wikilink = wrap(wikilink, ['text'])
 
+    def mirroradmins(self, irc, msg, args, hostname):
+        """<hostname>
+
+        Return MirrorManager list of FAS usernames which administer <hostname>.
+        <hostname> must be the FQDN of the host."""
+        url = "https://admin.fedoraproject.org/mirrormanager/mirroradmins?tg_format=json&host=" + hostname
+        result = self._load_json(url)['values']
+        if len(result) == 0:
+            irc.reply('Hostname "%s" not found' % hostname)
+            return
+        string = 'Mirror Admins of %s: ' + ' '.join(result)
+        irc.reply(string.encode('utf-8'))
+    mirroradmins = wrap(mirroradmins)
 
 Class = Fedora
 
