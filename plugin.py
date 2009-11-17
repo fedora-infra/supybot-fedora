@@ -400,7 +400,8 @@ class Fedora(callbacks.Plugin):
         if len(result) == 0:
             irc.reply('Hostname "%s" not found' % hostname)
             return
-        string = 'Mirror Admins of %s: ' + ' '.join(result)
+        string = 'Mirror Admins of %s: ' % hostname
+        string += ' '.join(result)
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins)
 
