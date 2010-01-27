@@ -247,22 +247,39 @@ class Fedora(callbacks.Plugin):
             ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s" + \
             ", Locale: %(locale)s, Extension: 5%(id)s" + \
             ", GPG key ID: %(gpg_keyid)s, Status: %(status)s") % person
-        approved = ''
-        for group in person['approved_memberships']:
-            approved += group['name'] + ' '
+        irc.reply(string.encode('utf-8'))
 
+        # List of unapproved groups is easy
         unapproved = ''
         for group in person['unapproved_memberships']:
             unapproved = unapproved + "%s " % group['name']
+        if unapproved != '':
+            irc.reply('Unapproved Groups: %s' % unapproved)
 
+        # List of approved groups requires a separate query to extract roles
+        constraints = {'username': name, 'group': '%',
+                'role_status': 'approved'}
+        columns = ['username', 'group', 'role_type']
+        roles = []
+        try:
+            roles = self.fasclient.people_query(constraints=constraints,
+                    columns=columns)
+        except:
+            irc.reply('Error getting group memberships.')
+            return
+
+        approved = ''
+        for role in roles:
+            if role['role_type'] == 'sponsor':
+                approved += '+' + role['group'] + ' '
+            elif role['role_type'] == 'administrator':
+                approved += '@' + role['group'] + ' '
+            else:
+                approved += role['group'] + ' '
         if approved == '':
             approved = "None"
-        if unapproved == '':
-            unapproved = "None"
 
-        irc.reply(string.encode('utf-8'))
         irc.reply('Approved Groups: %s' % approved)
-        irc.reply('Unapproved Groups: %s' % unapproved)
     fasinfo = wrap(fasinfo, ['text'])
 
     def group(self, irc, msg, args, name):
