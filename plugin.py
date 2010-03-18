@@ -104,9 +104,7 @@ class Fedora(callbacks.Plugin):
                                        password=self.password)
         self.pkgdb = PackageDB()
         # URLs
-        self.url = {}
-        self.url["bugzacl"] = "https://admin.fedoraproject.org/pkgdb/acls/"+\
-                "bugzilla?tg_format=json"
+        #self.url = {}
 
         # fetch necessary caches
         self._refresh()
@@ -134,10 +132,8 @@ class Fedora(callbacks.Plugin):
                                       '', user['email'] or '')
             self.faslist[key] = value
         self.log.info("Downloading package owners cache")
-        self.bugzacl = self._load_json(self.url["bugzacl"])['bugzillaAcls']
+        self.bugzacl = self.pkgdb.get_bugzilla_acls()
         socket.setdefaulttimeout(timeout)
-        #json = simplejson.loads(file("/tmp/bugzilla", "r").read())
-        #self.bugzacl = json['bugzillaAcls']
 
     def refresh(self, irc, msg, args):
         """takes no arguments
