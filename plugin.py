@@ -399,7 +399,7 @@ class Fedora(callbacks.Plugin):
         string = 'Mirror Admins of %s: ' % hostname
         string += ' '.join(result)
         irc.reply(string.encode('utf-8'))
-    mirroradmins = wrap(mirroradmins)
+    mirroradmins = wrap(mirroradmins, ['text'])
 
 Class = Fedora
 
