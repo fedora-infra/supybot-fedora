@@ -140,7 +140,7 @@ class Fedora(callbacks.Plugin):
 
         Refresh the necessary caches."""
         self._refresh()
-        return True
+        irc.replySuccess()
     refresh = wrap(refresh)
 
     def _load_json(self, url):
