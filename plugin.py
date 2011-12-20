@@ -290,6 +290,23 @@ class Fedora(callbacks.Plugin):
             irc.reply('There is no group "%s".' % name)
     group = wrap(group, ['text'])
 
+    def admins(self, irc, msg, args, name):
+        """<group short name>
+
+        Return the administrators list for the selected group"""
+
+        try:
+            group = self.fasclient.group_members(name)
+            sponsors = ''
+            for person in group:
+                elif person['role_type'] == 'administrator':
+                    sponsors += person['username'] + ' '
+            irc.reply('Administrators for %s: %s' % (name, sponsors))
+        except AppError:
+            irc.reply('There is no group %s.' % name)
+
+    sponsors = wrap(sponsors, ['text'])
+
     def sponsors(self, irc, msg, args, name):
         """<group short name>
 
