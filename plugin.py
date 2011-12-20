@@ -329,17 +329,6 @@ class Fedora(callbacks.Plugin):
 
     members = wrap(members, ['text'])
 
-    def ext(self, irc, msg, args, name):
-        """<username>
-
-        Return the talk.fedoraproject.org extension number for a Fedora Account
-        System username."""
-        if name in self.users.keys():
-            irc.reply('5' + str(self.users[name]['id']))
-        else:
-            irc.reply("User %s doesn't exist" % name)
-    ext = wrap(ext, ['text'])
-
     def showticket(self, irc, msg, args, baseurl, number):
         """<baseurl> <number>
 
