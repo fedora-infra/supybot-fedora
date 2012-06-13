@@ -45,6 +45,8 @@ from fedora.client.fas2 import AccountSystem
 from fedora.client.fas2 import FASError
 from fedora.client.pkgdb import PackageDB
 
+from kitchen.text.converters import to_unicode
+
 import simplejson
 import urllib
 import commands
@@ -212,6 +214,7 @@ class Fedora(callbacks.Plugin):
 
         Search the Fedora Account System usernames, full names, and email
         addresses for a match."""
+        find_name = to_unicode(find_name)
         matches = []
         for entry in self.faslist.keys():
             if entry.find(find_name.lower()) != -1:
