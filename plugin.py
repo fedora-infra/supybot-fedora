@@ -228,6 +228,37 @@ class Fedora(callbacks.Plugin):
             irc.reply(' - '.join(output).encode('utf-8'))
     fas = wrap(fas, ['text'])
 
+    def hellomynameis(self, irc, msg, args, name):
+        """<username>
+
+        Return brief information about a Fedora Account System username. Useful
+        for things like meeting roll call and calling attention to yourself."""
+        try:
+            person = sef.fasclient.person_by_username(name)
+        except:
+            irc.reply('Something blew up, please try again')
+            return
+        if not person:
+            irc.reply('Sorry, but you don\'t exist')
+            return
+        irc.reply('%(username)s \'%(human_name)s\' <%(email)s>' % person)
+    hellomynameis = wrap(hellomynameis, ['text'])
+
+    def himynameis(self, irc, msg, args, name):
+        """<username>
+
+        Will the real Slim Shady please stand up?"""
+        try:
+            person = sef.fasclient.person_by_username(name)
+        except:
+            irc.reply('Something blew up, please try again')
+            return
+        if not person:
+            irc.reply('Sorry, but you don\'t exist')
+            return
+        irc.reply('%(username)s \'Slim Shady\' <%(email)s>' % person)
+    himynameis = wrap(himynameis, ['text'])
+
     def fasinfo(self, irc, msg, args, name):
         """<username>
 
