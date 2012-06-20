@@ -333,7 +333,7 @@ class Fedora(callbacks.Plugin):
             group = self.fasclient.group_members(name)
             sponsors = ''
             for person in group:
-                elif person['role_type'] == 'administrator':
+                if person['role_type'] == 'administrator':
                     sponsors += person['username'] + ' '
             irc.reply('Administrators for %s: %s' % (name, sponsors))
         except AppError:
