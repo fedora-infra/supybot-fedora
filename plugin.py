@@ -249,7 +249,7 @@ class Fedora(callbacks.Plugin):
 
         Will the real Slim Shady please stand up?"""
         try:
-            person = sef.fasclient.person_by_username(name)
+            person = self.fasclient.person_by_username(name)
         except:
             irc.reply('Something blew up, please try again')
             return
