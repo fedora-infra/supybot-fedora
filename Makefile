@@ -1,4 +1,4 @@
-VERSION = 0.2.10.1
+VERSION = 0.2.11
 
 .PHONY: dist
 
