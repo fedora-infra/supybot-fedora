@@ -236,7 +236,7 @@ class Fedora(callbacks.Plugin):
         Return brief information about a Fedora Account System username. Useful
         for things like meeting roll call and calling attention to yourself."""
         try:
-            person = sef.fasclient.person_by_username(name)
+            person = self.fasclient.person_by_username(name)
         except:
             irc.reply('Something blew up, please try again')
             return
