@@ -368,7 +368,7 @@ class Fedora(callbacks.Plugin):
         except AppError:
             irc.reply('There is no group %s.' % name)
 
-    sponsors = wrap(sponsors, ['text'])
+    admins = wrap(admins, ['text'])
 
     def sponsors(self, irc, msg, args, name):
         """<group short name>
