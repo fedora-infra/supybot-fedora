@@ -52,6 +52,8 @@ import urllib
 import commands
 import urllib2
 import socket
+import pytz
+import datetime
 
 from __init__ import __version__
 
@@ -234,7 +236,7 @@ class Fedora(callbacks.Plugin):
         Return brief information about a Fedora Account System username. Useful
         for things like meeting roll call and calling attention to yourself."""
         try:
-            person = sef.fasclient.person_by_username(name)
+            person = self.fasclient.person_by_username(name)
         except:
             irc.reply('Something blew up, please try again')
             return
@@ -258,6 +260,33 @@ class Fedora(callbacks.Plugin):
             return
         irc.reply('%(username)s \'Slim Shady\' <%(email)s>' % person)
     himynameis = wrap(himynameis, ['text'])
+
+    def localtime(self, irc, msg, args, name):
+        """<username>
+
+        Returns the current time of the user.
+        The timezone is queried from FAS."""
+        try:
+            person = self.fasclient.person_by_username(name)
+        except:
+            irc.reply('Error getting info user user: "%s"' % name)
+            return
+        if not person:
+            irc.reply('User "%s" doesn\'t exist' % name)
+            return
+        timezone_name = person['timezone']
+        if timezone_name is None:
+            irc.reply('User "%s" doesn\'t share his timezone' % name)
+            return
+        try:
+            time = datetime.datetime.now(pytz.timezone(timezone_name))
+        except:
+            irc.reply('The timezone of "%s" was unknown: "%s"' % (name,
+            timezone))
+            return
+        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' % (name,
+        time.strftime('%H:%M'), timezone_name))
+    localtime = wrap(localtime, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
         """<username>
@@ -339,7 +368,7 @@ class Fedora(callbacks.Plugin):
         except AppError:
             irc.reply('There is no group %s.' % name)
 
-    sponsors = wrap(sponsors, ['text'])
+    admins = wrap(admins, ['text'])
 
     def sponsors(self, irc, msg, args, name):
         """<group short name>
