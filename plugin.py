@@ -243,7 +243,8 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('Sorry, but you don\'t exist')
             return
-        irc.reply('%(username)s \'%(human_name)s\' <%(email)s>' % person)
+        irc.reply(('%(username)s \'%(human_name)s\' <%(email)s>' %
+            person).encode('utf-8'))
     hellomynameis = wrap(hellomynameis, ['text'])
 
     def himynameis(self, irc, msg, args, name):
@@ -258,7 +259,8 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('Sorry, but you don\'t exist')
             return
-        irc.reply('%(username)s \'Slim Shady\' <%(email)s>' % person)
+        irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
+            person).encode('utf-8'))
     himynameis = wrap(himynameis, ['text'])
 
     def localtime(self, irc, msg, args, name):
