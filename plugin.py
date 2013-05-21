@@ -244,7 +244,7 @@ class Fedora(callbacks.Plugin):
             irc.reply('Sorry, but you don\'t exist')
             return
         irc.reply(('%(username)s \'%(human_name)s\' <%(email)s>' %
-            person).encode('utf-8'))
+                   person).encode('utf-8'))
     hellomynameis = wrap(hellomynameis, ['text'])
 
     def himynameis(self, irc, msg, args, name):
@@ -260,7 +260,7 @@ class Fedora(callbacks.Plugin):
             irc.reply('Sorry, but you don\'t exist')
             return
         irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
-            person).encode('utf-8'))
+                   person).encode('utf-8'))
     himynameis = wrap(himynameis, ['text'])
 
     def localtime(self, irc, msg, args, name):
@@ -284,10 +284,10 @@ class Fedora(callbacks.Plugin):
             time = datetime.datetime.now(pytz.timezone(timezone_name))
         except:
             irc.reply('The timezone of "%s" was unknown: "%s"' % (name,
-            timezone))
+                                                                  timezone))
             return
-        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' % (name,
-        time.strftime('%H:%M'), timezone_name))
+        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
+                  (name, time.strftime('%H:%M'), timezone_name))
     localtime = wrap(localtime, ['text'])
 
     def fasinfo(self, irc, msg, args, name):
@@ -303,11 +303,11 @@ class Fedora(callbacks.Plugin):
             irc.reply('User "%s" doesn\'t exist' % name)
             return
         person['creation'] = person['creation'].split(' ')[0]
-        string = ("User: %(username)s, Name: %(human_name)s" + \
-            ", email: %(email)s, Creation: %(creation)s" + \
-            ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s" + \
-            ", Locale: %(locale)s" + \
-            ", GPG key ID: %(gpg_keyid)s, Status: %(status)s") % person
+        string = ("User: %(username)s, Name: %(human_name)s"
+                  ", email: %(email)s, Creation: %(creation)s"
+                  ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
+                  ", Locale: %(locale)s"
+                  ", GPG key ID: %(gpg_keyid)s, Status: %(status)s") % person
         irc.reply(string.encode('utf-8'))
 
         # List of unapproved groups is easy
@@ -319,12 +319,12 @@ class Fedora(callbacks.Plugin):
 
         # List of approved groups requires a separate query to extract roles
         constraints = {'username': name, 'group': '%',
-                'role_status': 'approved'}
+                       'role_status': 'approved'}
         columns = ['username', 'group', 'role_type']
         roles = []
         try:
             roles = self.fasclient.people_query(constraints=constraints,
-                    columns=columns)
+                                                columns=columns)
         except:
             irc.reply('Error getting group memberships.')
             return
@@ -428,7 +428,7 @@ class Fedora(callbacks.Plugin):
             irc.reply(utils.web.htmlToText(parser.title.strip()) + ' - ' + url)
         else:
             irc.reply(format('That URL appears to have no HTML title ' +
-                'within the first %i bytes.', size))
+                             'within the first %i bytes.', size))
     showticket = wrap(showticket, ['httpUrl', 'int'])
 
     def swedish(self, irc, msg, args):
@@ -462,7 +462,8 @@ class Fedora(callbacks.Plugin):
 
         Return MirrorManager list of FAS usernames which administer <hostname>.
         <hostname> must be the FQDN of the host."""
-        url = "https://admin.fedoraproject.org/mirrormanager/mirroradmins?tg_format=json&host=" + hostname
+        url = ("https://admin.fedoraproject.org/mirrormanager/mirroradmins?"
+               "tg_format=json&host=" + hostname)
         result = self._load_json(url)['values']
         if len(result) == 0:
             irc.reply('Hostname "%s" not found' % hostname)
