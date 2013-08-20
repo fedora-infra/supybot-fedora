@@ -29,6 +29,7 @@
 
 import sgmllib
 import htmlentitydefs
+import requests
 
 import supybot.utils as utils
 import supybot.conf as conf
@@ -47,12 +48,16 @@ from fedora.client.pkgdb import PackageDB
 
 from kitchen.text.converters import to_unicode
 
+import fedmsg.config
+import fedmsg.meta
+
 import simplejson
 import urllib
 import commands
 import urllib2
 import socket
 import pytz
+import calendar
 import datetime
 
 from __init__ import __version__
@@ -563,7 +568,7 @@ class Datagrepper(object):
         params.update(kwargs)
 
         req = requests.get(cls.datagrepper_url, params=params)
-        json_out = json.loads(req.text)
+        json_out = simplejson.loads(req.text)
         result = int(json_out['total'])
         return result
 
