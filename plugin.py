@@ -490,7 +490,7 @@ class Fedora(callbacks.Plugin):
 
         # First, some argument parsing.  Supybot should be able to do this for
         # us, but I couldn't figure it out.  The supybot.plugins.additional
-        # object it the thing to use... except its weird.
+        # object is the thing to use... except its weird.
         tokens = arguments.split(None, 1)
         if len(tokens) == 1:
             symbol, frame = tokens[0], 'daily'
@@ -506,7 +506,7 @@ class Fedora(callbacks.Plugin):
         # good.  We want "TAG".
         # Why all this trouble?  Well, as new things get added to the fedmsg
         # bus, we don't want to have keep coming back here and modifying this
-        # code.  Hopefully this dance will handle some of this for us.
+        # code.  Hopefully this dance will at least partially future-proof us.
         symbols = dict([
             (processor.__name__.lower(), processor.__name__[:3].upper())
             for processor in fedmsg.meta.processors
@@ -569,15 +569,16 @@ class Fedora(callbacks.Plugin):
         if count1 and count2:
             percent = ((float(count2) / count1) - 1) * 100
         elif not count1 and count2:
-            # If old time period had zero message, but there are some in this
-            # period.. that's an infinite increase.
+            # If the older of the two time periods had zero messages, but there
+            # are some in the more current period.. well, that's an infinite
+            # percent increase.
             percent = float('inf')
         elif not count1 and not count2:
             # If counts are zero for both periods, then the change is 0%.
             percent = 0
         else:
-            # Else, if there were some message in the old time period, but none
-            # in the current... then that's a 100% drop off.
+            # Else, if there were some messages in the old time period, but
+            # none in the current... then that's a 100% drop off.
             percent = -100
 
         sign = lambda value: value >= 0 and '+' or '-'
