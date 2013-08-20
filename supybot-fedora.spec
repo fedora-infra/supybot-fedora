@@ -12,6 +12,7 @@ Source0:        https://fedorahosted.org/releases/s/u/%{name}/%{name}-%{version}
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires:       python-fedora >= 0.3.7, supybot
+Requires:       python-requests
 
 BuildArch:      noarch
 BuildRequires:  python

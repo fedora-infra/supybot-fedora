@@ -29,6 +29,7 @@
 
 import sgmllib
 import htmlentitydefs
+import requests
 
 import supybot.utils as utils
 import supybot.conf as conf
@@ -47,12 +48,16 @@ from fedora.client.pkgdb import PackageDB
 
 from kitchen.text.converters import to_unicode
 
+import fedmsg.config
+import fedmsg.meta
+
 import simplejson
 import urllib
 import commands
 import urllib2
 import socket
 import pytz
+import calendar
 import datetime
 
 from __init__ import __version__
@@ -112,6 +117,10 @@ class Fedora(callbacks.Plugin):
 
         # fetch necessary caches
         self._refresh()
+
+        # Pull in /etc/fedmsg.d/ so we can build the fedmsg.meta processors.
+        fm_config = fedmsg.config.load_config()
+        fedmsg.meta.make_processors(**fm_config)
 
     def _refresh(self):
         timeout = socket.getdefaulttimeout()
@@ -472,6 +481,139 @@ class Fedora(callbacks.Plugin):
         string += ' '.join(result)
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
+
+    def quote(self, irc, msg, args, arguments):
+        """<SYMBOL> [daily, weekly, monthly]
+
+        Return some datagrepper statistics on fedmsg categories.
+        """
+
+        # First, some argument parsing.  Supybot should be able to do this for
+        # us, but I couldn't figure it out.  The supybot.plugins.additional
+        # object is the thing to use... except its weird.
+        tokens = arguments.split(None, 1)
+        if len(tokens) == 1:
+            symbol, frame = tokens[0], 'daily'
+        else:
+            symbol, frame = tokens
+
+        # Second, build a lookup table for symbols.  By default, we'll use the
+        # fedmsg category names, take their first 3 characters and uppercase
+        # them.  That will take things like "wiki" and turn them into "WIK" and
+        # "bodhi" and turn them into "BOD".  This handles a lot for us.  We'll
+        # then override those that don't make sense manually here.  For
+        # instance "fedoratagger" by default would be "FED", but that's no
+        # good.  We want "TAG".
+        # Why all this trouble?  Well, as new things get added to the fedmsg
+        # bus, we don't want to have keep coming back here and modifying this
+        # code.  Hopefully this dance will at least partially future-proof us.
+        symbols = dict([
+            (processor.__name__.lower(), processor.__name__[:3].upper())
+            for processor in fedmsg.meta.processors
+        ])
+        symbols.update({
+            'fedoratagger': 'TAG',
+            'fedbadges': 'BDG',
+            'buildsys': 'KOJ',
+            'pkgdb': 'PKG',
+            'meetbot': 'MTB',
+            'planet': 'PLN',
+            'trac': 'TRC',
+            'mailman': 'MM3',
+        })
+
+        # Now invert the dict so we can lookup the argued symbol.
+        # Yes, this is vulnerable to collisions.
+        symbols = dict([(sym, name) for name, sym in symbols.items()])
+
+        # These aren't user-facing topics, so drop 'em.
+        del symbols['LOG']
+        del symbols['UNH']
+        del symbols['ANN']  # And this one is unused...
+
+        key_fmt = lambda d: ', '.join(sorted(d.keys()))
+
+        if not symbol in symbols:
+            response = "No such symbol %r.  Try one of %s"
+            irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
+            return
+
+        # Now, build another lookup of our various timeframes.
+        frames = dict(
+            daily=datetime.timedelta(days=1),
+            weekly=datetime.timedelta(days=7),
+            monthly=datetime.timedelta(days=30),
+        )
+
+        if not frame in frames:
+            response = "No such timeframe %r.  Try one of %s"
+            irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
+            return
+
+        category = [symbols[symbol]]
+
+        t2 = datetime.datetime.now()
+        t1 = t2 - frames[frame]
+        t0 = t1 - frames[frame]
+
+        # Count the number of messages between t0 and t1, and between t1 and t2
+        count1 = Datagrepper.query(t0, t1, category=category)
+        count2 = Datagrepper.query(t1, t2, category=category)
+
+        phrases = dict(
+            daily="yesterday",
+            weekly="last week",
+            monthly="last month",
+        )
+
+        if count1 and count2:
+            percent = ((float(count2) / count1) - 1) * 100
+        elif not count1 and count2:
+            # If the older of the two time periods had zero messages, but there
+            # are some in the more current period.. well, that's an infinite
+            # percent increase.
+            percent = float('inf')
+        elif not count1 and not count2:
+            # If counts are zero for both periods, then the change is 0%.
+            percent = 0
+        else:
+            # Else, if there were some messages in the old time period, but
+            # none in the current... then that's a 100% drop off.
+            percent = -100
+
+        sign = lambda value: value >= 0 and '+' or '-'
+
+        response = "{sym}, {name} {sign}{percent:.2f}% over {phrase}".format(
+            sym=symbol,
+            name=symbols[symbol],
+            sign=sign(percent),
+            percent=abs(percent),
+            phrase=phrases[frame],
+        )
+
+        irc.reply(response.encode('utf-8'))
+    quote = wrap(quote, ['text'])
+
+
+class Datagrepper(object):
+    """ Some datagrepper utilities for the "quote" command. """
+
+    datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+
+    @classmethod
+    def query(cls, start, end, **kwargs):
+        """ Return the count of msgs filtered by kwargs for a given time. """
+        params = {
+            'start': calendar.timegm(start.timetuple()),
+            'end': calendar.timegm(end.timetuple()),
+        }
+        params.update(kwargs)
+
+        req = requests.get(cls.datagrepper_url, params=params)
+        json_out = simplejson.loads(req.text)
+        result = int(json_out['total'])
+        return result
+
 
 Class = Fedora
 
