@@ -493,7 +493,7 @@ class Fedora(callbacks.Plugin):
         # object it the thing to use... except its weird.
         tokens = arguments.split(None, 1)
         if len(tokens) == 1:
-            symbol, frame  = tokens[0], 'daily'
+            symbol, frame = tokens[0], 'daily'
         else:
             symbol, frame = tokens
 
