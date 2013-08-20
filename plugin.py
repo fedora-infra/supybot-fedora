@@ -482,13 +482,22 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
-    def quote(self, irc, msg, args, symbol, frame="daily"):
+    def quote(self, irc, msg, args, arguments):
         """<SYMBOL> [daily, weekly, monthly]
 
         Return some datagrepper statistics on fedmsg categories.
         """
 
-        # First, build a lookup table for symbols.  By default, we'll use the
+        # First, some argument parsing.  Supybot should be able to do this for
+        # us, but I couldn't figure it out.  The supybot.plugins.additional
+        # object it the thing to use... except its weird.
+        tokens = arguments.split(None, 1)
+        if len(tokens) == 1:
+            symbol, frame  = tokens[0], 'daily'
+        else:
+            symbol, frame = tokens
+
+        # Second, build a lookup table for symbols.  By default, we'll use the
         # fedmsg category names, take their first 3 characters and uppercase
         # them.  That will take things like "wiki" and turn them into "WIK" and
         # "bodhi" and turn them into "BOD".  This handles a lot for us.  We'll
@@ -499,24 +508,34 @@ class Fedora(callbacks.Plugin):
         # bus, we don't want to have keep coming back here and modifying this
         # code.  Hopefully this dance will handle some of this for us.
         symbols = dict([
-            (processor.__name__, processor.__name__[:3].upper())
+            (processor.__name__.lower(), processor.__name__[:3].upper())
             for processor in fedmsg.meta.processors
         ])
         symbols.update({
             'fedoratagger': 'TAG',
+            'fedbadges': 'BDG',
             'buildsys': 'KOJ',
             'pkgdb': 'PKG',
             'meetbot': 'MTB',
             'planet': 'PLN',
+            'trac': 'TRC',
+            'mailman': 'MM3',
         })
 
         # Now invert the dict so we can lookup the argued symbol.
         # Yes, this is vulnerable to collisions.
         symbols = dict([(sym, name) for name, sym in symbols.items()])
 
+        # These aren't user-facing topics, so drop 'em.
+        del symbols['LOG']
+        del symbols['UNH']
+        del symbols['ANN']  # And this one is unused...
+
+        key_fmt = lambda d: ', '.join(sorted(d.keys()))
+
         if not symbol in symbols:
-            response = "No such symbol %r.  Try one of %r"
-            irc.reply((response % (symbol, symbols.keys())).encode('utf-8'))
+            response = "No such symbol %r.  Try one of %s"
+            irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
             return
 
         # Now, build another lookup of our various timeframes.
@@ -527,8 +546,8 @@ class Fedora(callbacks.Plugin):
         )
 
         if not frame in frames:
-            response = "No such timeframe %r.  Try one of %r"
-            irc.reply((response % (frame, frames.keys())).encode('utf-8'))
+            response = "No such timeframe %r.  Try one of %s"
+            irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
             return
 
         category = [symbols[symbol]]
@@ -538,8 +557,8 @@ class Fedora(callbacks.Plugin):
         t0 = t1 - frames[frame]
 
         # Count the number of messages between t0 and t1, and between t1 and t2
-        count1 = Datagrepper.query(t0, t1, category)
-        count2 = Datagrepper.query(t1, t2, category)
+        count1 = Datagrepper.query(t0, t1, category=category)
+        count2 = Datagrepper.query(t1, t2, category=category)
 
         phrases = dict(
             daily="yesterday",
@@ -547,14 +566,36 @@ class Fedora(callbacks.Plugin):
             monthly="last month",
         )
 
-        percent = ((float(count2) / count1) - 1) * 100
-        response = "{}: {:.2f} over {}".format(symbol, percent, phrases[frame])
+        if count1 and count2:
+            percent = ((float(count2) / count1) - 1) * 100
+        elif not count1 and count2:
+            # If old time period had zero message, but there are some in this
+            # period.. that's an infinite increase.
+            percent = float('inf')
+        elif not count1 and not count2:
+            # If counts are zero for both periods, then the change is 0%.
+            percent = 0
+        else:
+            # Else, if there were some message in the old time period, but none
+            # in the current... then that's a 100% drop off.
+            percent = -100
+
+        sign = lambda value: value >= 0 and '+' or '-'
+
+        response = "{sym}, {name} {sign}{percent:.2f}% over {phrase}".format(
+            sym=symbol,
+            name=symbols[symbol],
+            sign=sign(percent),
+            percent=abs(percent),
+            phrase=phrases[frame],
+        )
+
         irc.reply(response.encode('utf-8'))
     quote = wrap(quote, ['text'])
 
 
 class Datagrepper(object):
-    """ Some datagrepper utilities for the "quote" command. """"
+    """ Some datagrepper utilities for the "quote" command. """
 
     datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
 
