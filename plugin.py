@@ -643,11 +643,10 @@ class Fedora(callbacks.Plugin):
         )
         irc.reply(response.encode('utf-8'))
 
-
         # Now, make a graph out of it.
         sparkline = Utils.sparkline(sparkline_values)
 
-        template = u"{sym}, {sparkline}  ⤆ over the last {phrase}"
+        template = u"     {sparkline}  ⤆ over {phrase}"
         response = template.format(
             sym=symbol,
             sparkline=sparkline,
@@ -655,6 +654,13 @@ class Fedora(callbacks.Plugin):
         )
         irc.reply(response.encode('utf-8'))
 
+        # And a final line for "x-axis tics"
+        t1_fmt = t1.strftime("%H:%M UTC %m/%d")
+        t2_fmt = t2.strftime("%H:%M UTC %m/%d")
+        padding = u" " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
+        template = u"     ↑ {t1}{padding}↑ {t2}"
+        response = template.format(t1=t1_fmt, t2=t2_fmt, padding=padding)
+        irc.reply(response.encode('utf-8'))
     quote = wrap(quote, ['text'])
 
 
@@ -682,7 +688,6 @@ class Utils(object):
         while current + delta <= stop:
             yield current, current + delta
             current += delta
-
 
 
 Class = Fedora
