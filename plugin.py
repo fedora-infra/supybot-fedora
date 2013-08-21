@@ -57,7 +57,6 @@ import commands
 import urllib2
 import socket
 import pytz
-import calendar
 import datetime
 
 from __init__ import __version__
@@ -604,8 +603,8 @@ class Datagrepper(object):
     def query(cls, start, end, **kwargs):
         """ Return the count of msgs filtered by kwargs for a given time. """
         params = {
-            'start': calendar.timegm(start.timetuple()),
-            'end': calendar.timegm(end.timetuple()),
+            'start': time.mktime(start.timetuple()),
+            'end': time.mktime(end.timetuple()),
         }
         params.update(kwargs)
 
