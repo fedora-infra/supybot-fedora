@@ -482,6 +482,24 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
+    def badges(self, irc, msg, args, name):
+        """<username>
+
+        Return badges statistics about a user.
+        """
+        url = "https://badges.fedoraproject.org/user/" + name
+        d = requests.get(url + "/json").json()
+
+        if 'error' in d:
+            response = d['error']
+        else:
+            template = "{name} has unlocked {n} Fedora Badges:  {url}"
+            n = len(d['assertions'])
+            response = template.format(name=name, url=url, n=n)
+
+        irc.reply(response.encode('utf-8'))
+    badges = wrap(badges, ['text'])
+
     def quote(self, irc, msg, args, arguments):
         """<SYMBOL> [daily, weekly, monthly]
 
