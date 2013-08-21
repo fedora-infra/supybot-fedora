@@ -654,9 +654,10 @@ class Fedora(callbacks.Plugin):
         )
         irc.reply(response.encode('utf-8'))
 
+        to_utc = lambda t: time.gmtime(time.mktime(t.timetuple()))
         # And a final line for "x-axis tics"
-        t1_fmt = t1.strftime("%H:%M UTC %m/%d")
-        t2_fmt = t2.strftime("%H:%M UTC %m/%d")
+        t1_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t1))
+        t2_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t2))
         padding = u" " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
         template = u"     ↑ {t1}{padding}↑ {t2}"
         response = template.format(t1=t1_fmt, t2=t2_fmt, padding=padding)
