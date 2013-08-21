@@ -60,11 +60,10 @@ import socket
 import pytz
 import datetime
 
-from __init__ import __version__
-
 SPARKLINE_RESOLUTION = 50
 
 datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+
 
 def datagrepper_query(kwargs):
     """ Return the count of msgs filtered by kwargs for a given time.
@@ -470,6 +469,10 @@ class Fedora(callbacks.Plugin):
         """takes no arguments
 
         Humor mmcgrath."""
+
+        # Import this here to avoid a circular import problem.
+        from __init__ import __version__
+
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
         irc.reply(str('(supybot-fedora version %s)' % __version__))
