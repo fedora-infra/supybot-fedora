@@ -62,6 +62,32 @@ import datetime
 
 from __init__ import __version__
 
+SPARKLINE_RESOLUTION = 50
+
+datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+
+def datagrepper_query(kwargs):
+    """ Return the count of msgs filtered by kwargs for a given time.
+
+    The arguments for this are a little clumsy; this is imposed on us by
+    multiprocessing.Pool.
+    """
+    start, end = kwargs.pop('start'), kwargs.pop('end')
+    params = {
+        'start': time.mktime(start.timetuple()),
+        'end': time.mktime(end.timetuple()),
+    }
+    params.update(kwargs)
+
+    req = requests.get(datagrepper_url, params=params)
+    json_out = simplejson.loads(req.text)
+    result = int(json_out['total'])
+    return result
+
+
+import multiprocessing
+mpool = multiprocessing.Pool(processes=SPARKLINE_RESOLUTION + 2)
+
 
 class Title(sgmllib.SGMLParser):
     entitydefs = htmlentitydefs.entitydefs.copy()
@@ -557,8 +583,20 @@ class Fedora(callbacks.Plugin):
         t0 = t1 - frames[frame]
 
         # Count the number of messages between t0 and t1, and between t1 and t2
-        count1 = Datagrepper.query(t0, t1, category=category)
-        count2 = Datagrepper.query(t1, t2, category=category)
+        query1 = dict(start=t0, end=t1, category=category)
+        query2 = dict(start=t1, end=t2, category=category)
+
+        # Run all of our queries at once for super speed.
+        batched_values = mpool.map(datagrepper_query, [
+            dict(start=x, end=y, category=category)
+            for x, y in Utils.daterange(t1, t2, SPARKLINE_RESOLUTION)
+        ] + [query1, query2])
+
+        count2 = batched_values.pop()
+        count1 = batched_values.pop()
+
+        # Just rename the results.  We'll use the rest for the sparkline.
+        sparkline_values = batched_values
 
         yester_phrases = dict(
             daily="yesterday",
@@ -598,8 +636,9 @@ class Fedora(callbacks.Plugin):
         )
         irc.reply(response.encode('utf-8'))
 
-        # This call can take a while.
-        sparkline = Datagrepper.sparkline(t1, t2, n=15, category=category)
+
+        # Now, make a graph out of it.
+        sparkline = Utils.sparkline(sparkline_values)
 
         template = u"{sym}, {sparkline}  ⤆ over the last {phrase}"
         response = template.format(
@@ -612,33 +651,14 @@ class Fedora(callbacks.Plugin):
     quote = wrap(quote, ['text'])
 
 
-class Datagrepper(object):
-    """ Some datagrepper utilities for the "quote" command. """
-
-    datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+class Utils(object):
+    """ Some handy utils for datagrepper visualization. """
 
     @classmethod
-    def query(cls, start, end, **kwargs):
-        """ Return the count of msgs filtered by kwargs for a given time. """
-        params = {
-            'start': time.mktime(start.timetuple()),
-            'end': time.mktime(end.timetuple()),
-        }
-        params.update(kwargs)
-
-        req = requests.get(cls.datagrepper_url, params=params)
-        json_out = simplejson.loads(req.text)
-        result = int(json_out['total'])
-        return result
-
-    @classmethod
-    def sparkline(cls, start, end, n, **kwargs):
-        values = [
-            float(cls.query(t0, t1, **kwargs))
-            for t0, t1 in cls.daterange(start, end, n)
-        ]
+    def sparkline(cls, values):
         bar = u'▁▂▃▄▅▆▇█'
         barcount = len(bar) - 1
+        values = map(float, values)
         mn, mx = min(values), max(values)
         extent = mx - mn
         unicode_sparkline = u''.join([
