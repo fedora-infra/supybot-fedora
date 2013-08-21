@@ -85,6 +85,7 @@ def datagrepper_query(kwargs):
 
 
 import multiprocessing
+# Create a multiprocessing pool for superfast datagrepper queries.
 mpool = multiprocessing.Pool(processes=SPARKLINE_RESOLUTION + 2)
 
 
@@ -512,7 +513,7 @@ class Fedora(callbacks.Plugin):
     mirroradmins = wrap(mirroradmins, ['text'])
 
     def quote(self, irc, msg, args, arguments):
-        """<SYMBOL> [daily, weekly, monthly]
+        """<SYMBOL> [daily, weekly, monthly, quarterly]
 
         Return some datagrepper statistics on fedmsg categories.
         """
@@ -572,6 +573,7 @@ class Fedora(callbacks.Plugin):
             daily=datetime.timedelta(days=1),
             weekly=datetime.timedelta(days=7),
             monthly=datetime.timedelta(days=30),
+            quarterly=datetime.timedelta(days=91),
         )
 
         if not frame in frames:
@@ -603,13 +605,15 @@ class Fedora(callbacks.Plugin):
 
         yester_phrases = dict(
             daily="yesterday",
-            weekly="last week",
-            monthly="last month",
+            weekly="the week preceding this one",
+            monthly="the month preceding this one",
+            quarterly="the 3 months preceding these past three months",
         )
         phrases = dict(
             daily="24 hours",
             weekly="week",
             monthly="month",
+            quarterly="3 months",
         )
 
         if count1 and count2:
