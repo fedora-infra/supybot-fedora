@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###
 # Copyright (c) 2007, Mike McGrath
 # All rights reserved.
@@ -559,10 +560,15 @@ class Fedora(callbacks.Plugin):
         count1 = Datagrepper.query(t0, t1, category=category)
         count2 = Datagrepper.query(t1, t2, category=category)
 
-        phrases = dict(
+        yester_phrases = dict(
             daily="yesterday",
             weekly="last week",
             monthly="last month",
+        )
+        phrases = dict(
+            daily="24 hours",
+            weekly="week",
+            monthly="month",
         )
 
         if count1 and count2:
@@ -582,15 +588,27 @@ class Fedora(callbacks.Plugin):
 
         sign = lambda value: value >= 0 and '+' or '-'
 
-        response = "{sym}, {name} {sign}{percent:.2f}% over {phrase}".format(
+        template = u"{sym}, {name} {sign}{percent:.2f}% over {phrase}"
+        response = template.format(
             sym=symbol,
             name=symbols[symbol],
             sign=sign(percent),
             percent=abs(percent),
-            phrase=phrases[frame],
+            phrase=yester_phrases[frame],
         )
-
         irc.reply(response.encode('utf-8'))
+
+        # This call can take a while.
+        sparkline = Datagrepper.sparkline(t1, t2, n=15, category=category)
+
+        template = u"{sym}, {sparkline}  ⤆ over the last {phrase}"
+        response = template.format(
+            sym=symbol,
+            sparkline=sparkline,
+            phrase=phrases[frame]
+        )
+        irc.reply(response.encode('utf-8'))
+
     quote = wrap(quote, ['text'])
 
 
@@ -612,6 +630,32 @@ class Datagrepper(object):
         json_out = simplejson.loads(req.text)
         result = int(json_out['total'])
         return result
+
+    @classmethod
+    def sparkline(cls, start, end, n, **kwargs):
+        values = [
+            float(cls.query(t0, t1, **kwargs))
+            for t0, t1 in cls.daterange(start, end, n)
+        ]
+        bar = u'▁▂▃▄▅▆▇█'
+        barcount = len(bar) - 1
+        mn, mx = min(values), max(values)
+        extent = mx - mn
+        unicode_sparkline = u''.join([
+            bar[int((n - mn) / extent * barcount)]
+            for n in values
+        ])
+        return unicode_sparkline
+
+    @classmethod
+    def daterange(cls, start, stop, steps):
+        """ A generator for stepping through time. """
+        delta = (stop - start) / steps
+        current = start
+        while current + delta <= stop:
+            yield current, current + delta
+            current += delta
+
 
 
 Class = Fedora
