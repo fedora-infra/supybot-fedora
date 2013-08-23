@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###
 # Copyright (c) 2007, Mike McGrath
 # All rights reserved.
@@ -57,10 +58,35 @@ import commands
 import urllib2
 import socket
 import pytz
-import calendar
 import datetime
 
-from __init__ import __version__
+SPARKLINE_RESOLUTION = 50
+
+datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+
+
+def datagrepper_query(kwargs):
+    """ Return the count of msgs filtered by kwargs for a given time.
+
+    The arguments for this are a little clumsy; this is imposed on us by
+    multiprocessing.Pool.
+    """
+    start, end = kwargs.pop('start'), kwargs.pop('end')
+    params = {
+        'start': time.mktime(start.timetuple()),
+        'end': time.mktime(end.timetuple()),
+    }
+    params.update(kwargs)
+
+    req = requests.get(datagrepper_url, params=params)
+    json_out = simplejson.loads(req.text)
+    result = int(json_out['total'])
+    return result
+
+
+import multiprocessing
+# Create a multiprocessing pool for superfast datagrepper queries.
+mpool = multiprocessing.Pool(processes=SPARKLINE_RESOLUTION + 2)
 
 
 class Title(sgmllib.SGMLParser):
@@ -444,6 +470,10 @@ class Fedora(callbacks.Plugin):
         """takes no arguments
 
         Humor mmcgrath."""
+
+        # Import this here to avoid a circular import problem.
+        from __init__ import __version__
+
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
         irc.reply(str('(supybot-fedora version %s)' % __version__))
@@ -501,7 +531,7 @@ class Fedora(callbacks.Plugin):
     badges = wrap(badges, ['text'])
 
     def quote(self, irc, msg, args, arguments):
-        """<SYMBOL> [daily, weekly, monthly]
+        """<SYMBOL> [daily, weekly, monthly, quarterly]
 
         Return some datagrepper statistics on fedmsg categories.
         """
@@ -561,6 +591,7 @@ class Fedora(callbacks.Plugin):
             daily=datetime.timedelta(days=1),
             weekly=datetime.timedelta(days=7),
             monthly=datetime.timedelta(days=30),
+            quarterly=datetime.timedelta(days=91),
         )
 
         if not frame in frames:
@@ -575,13 +606,32 @@ class Fedora(callbacks.Plugin):
         t0 = t1 - frames[frame]
 
         # Count the number of messages between t0 and t1, and between t1 and t2
-        count1 = Datagrepper.query(t0, t1, category=category)
-        count2 = Datagrepper.query(t1, t2, category=category)
+        query1 = dict(start=t0, end=t1, category=category)
+        query2 = dict(start=t1, end=t2, category=category)
 
-        phrases = dict(
+        # Run all of our queries at once for super speed.
+        batched_values = mpool.map(datagrepper_query, [
+            dict(start=x, end=y, category=category)
+            for x, y in Utils.daterange(t1, t2, SPARKLINE_RESOLUTION)
+        ] + [query1, query2])
+
+        count2 = batched_values.pop()
+        count1 = batched_values.pop()
+
+        # Just rename the results.  We'll use the rest for the sparkline.
+        sparkline_values = batched_values
+
+        yester_phrases = dict(
             daily="yesterday",
-            weekly="last week",
-            monthly="last month",
+            weekly="the week preceding this one",
+            monthly="the month preceding this one",
+            quarterly="the 3 months preceding these past three months",
+        )
+        phrases = dict(
+            daily="24 hours",
+            weekly="week",
+            monthly="month",
+            quarterly="3 months",
         )
 
         if count1 and count2:
@@ -601,36 +651,62 @@ class Fedora(callbacks.Plugin):
 
         sign = lambda value: value >= 0 and '+' or '-'
 
-        response = "{sym}, {name} {sign}{percent:.2f}% over {phrase}".format(
+        template = u"{sym}, {name} {sign}{percent:.2f}% over {phrase}"
+        response = template.format(
             sym=symbol,
             name=symbols[symbol],
             sign=sign(percent),
             percent=abs(percent),
-            phrase=phrases[frame],
+            phrase=yester_phrases[frame],
         )
+        irc.reply(response.encode('utf-8'))
 
+        # Now, make a graph out of it.
+        sparkline = Utils.sparkline(sparkline_values)
+
+        template = u"     {sparkline}  ⤆ over {phrase}"
+        response = template.format(
+            sym=symbol,
+            sparkline=sparkline,
+            phrase=phrases[frame]
+        )
+        irc.reply(response.encode('utf-8'))
+
+        to_utc = lambda t: time.gmtime(time.mktime(t.timetuple()))
+        # And a final line for "x-axis tics"
+        t1_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t1))
+        t2_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t2))
+        padding = u" " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
+        template = u"     ↑ {t1}{padding}↑ {t2}"
+        response = template.format(t1=t1_fmt, t2=t2_fmt, padding=padding)
         irc.reply(response.encode('utf-8'))
     quote = wrap(quote, ['text'])
 
 
-class Datagrepper(object):
-    """ Some datagrepper utilities for the "quote" command. """
-
-    datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+class Utils(object):
+    """ Some handy utils for datagrepper visualization. """
 
     @classmethod
-    def query(cls, start, end, **kwargs):
-        """ Return the count of msgs filtered by kwargs for a given time. """
-        params = {
-            'start': calendar.timegm(start.timetuple()),
-            'end': calendar.timegm(end.timetuple()),
-        }
-        params.update(kwargs)
+    def sparkline(cls, values):
+        bar = u'▁▂▃▄▅▆▇█'
+        barcount = len(bar) - 1
+        values = map(float, values)
+        mn, mx = min(values), max(values)
+        extent = mx - mn
+        unicode_sparkline = u''.join([
+            bar[int((n - mn) / extent * barcount)]
+            for n in values
+        ])
+        return unicode_sparkline
 
-        req = requests.get(cls.datagrepper_url, params=params)
-        json_out = simplejson.loads(req.text)
-        result = int(json_out['total'])
-        return result
+    @classmethod
+    def daterange(cls, start, stop, steps):
+        """ A generator for stepping through time. """
+        delta = (stop - start) / steps
+        current = start
+        while current + delta <= stop:
+            yield current, current + delta
+            current += delta
 
 
 Class = Fedora
