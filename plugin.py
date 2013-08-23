@@ -723,10 +723,13 @@ class Utils(object):
         values = map(float, values)
         mn, mx = min(values), max(values)
         extent = mx - mn
-        unicode_sparkline = u''.join([
-            bar[int((n - mn) / extent * barcount)]
-            for n in values
-        ])
+
+        if extent == 0:
+            indices = [0 for n in values]
+        else:
+            indices = [int((n - mn) / extent * barcount) for n in values]
+
+        unicode_sparkline = u''.join([bar[i] for i in indices])
         return unicode_sparkline
 
     @classmethod
