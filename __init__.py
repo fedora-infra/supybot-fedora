@@ -36,7 +36,7 @@ import supybot.world as world
 
 # Use this for the version of this plugin.  You may wish to put a CVS keyword
 # in here if you're keeping the plugin in CVS or some similar system.
-__version__ = "0.2.13"
+__version__ = "0.2.13.1"
 
 # Replace this with an appropriate author or supybot.Author instance.
 __author__ = supybot.Author('Mike McGrath', 'mmcgrath', 'mmcgrath@redhat.com')
@@ -53,13 +53,6 @@ __url__ = ''  # 'http://supybot.com/Members/yourname/Fedora/download'
 
 import config
 import plugin
-
-# This is crazy, I know.  We just opened it when we imported the plugin!  But
-# on the next line below we mimic a supybot convention and RE-load the plugin.
-# So, we close now, then re-construct the pool on the reload() line.  This
-# gets us around a bad memory leak.
-plugin.mpool.close()
-
 reload(plugin)  # In case we're being reloaded.
 # Add more reloads here if you add third-party modules and want them to be
 # reloaded when this plugin is reloaded.  Don't forget to import them as well!
