@@ -59,6 +59,7 @@ import urllib2
 import socket
 import pytz
 import datetime
+import threading
 
 SPARKLINE_RESOLUTION = 50
 
@@ -84,9 +85,37 @@ def datagrepper_query(kwargs):
     return result
 
 
-import multiprocessing
-# Create a multiprocessing pool for superfast datagrepper queries.
-mpool = multiprocessing.Pool(processes=SPARKLINE_RESOLUTION + 2)
+class WorkerThread(threading.Thread):
+    """ A simple worker thread for our threadpool. """
+
+    def __init__(self, fn, item, *args, **kwargs):
+        self.fn = fn
+        self.item = item
+        super(WorkerThread, self).__init__(*args, **kwargs)
+
+    def run(self):
+        self.result = self.fn(self.item)
+
+
+class ThreadPool(object):
+    """ Our very own threadpool implementation.
+
+    We make our own thing because multiprocessing is too heavy.
+    """
+
+    def map(self, fn, items):
+        threads = []
+
+        for item in items:
+            threads.append(WorkerThread(fn=fn, item=item))
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        return [thread.result for thread in threads]
 
 
 class Title(sgmllib.SGMLParser):
@@ -609,8 +638,9 @@ class Fedora(callbacks.Plugin):
         query1 = dict(start=t0, end=t1, category=category)
         query2 = dict(start=t1, end=t2, category=category)
 
-        # Run all of our queries at once for super speed.
-        batched_values = mpool.map(datagrepper_query, [
+        # Do this async for superfast datagrepper queries.
+        tpool = ThreadPool()
+        batched_values = tpool.map(datagrepper_query, [
             dict(start=x, end=y, category=category)
             for x, y in Utils.daterange(t1, t2, SPARKLINE_RESOLUTION)
         ] + [query1, query2])
