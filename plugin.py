@@ -580,7 +580,8 @@ class Fedora(callbacks.Plugin):
         now = datetime.datetime.utcnow()
 
         for meeting in data['meetings']:
-            string = meeting['meeting_date'] + " " + meeting['meeting_time_start']
+            string = "%s %s" % (meeting['meeting_date'],
+                                meeting['meeting_time_start'])
             dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now < dt:
