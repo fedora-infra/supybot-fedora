@@ -28,6 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
+import arrow
 import sgmllib
 import htmlentitydefs
 import requests
@@ -540,6 +541,50 @@ class Fedora(callbacks.Plugin):
         string += ' '.join(result)
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
+
+    def nextmeeting(self, irc, msg, args, channel):
+        """<channel>
+
+        Return the next meeting scheduled for a particular channel.
+        """
+
+        channel = channel.strip('#').split('@')[0]
+        meetings = list(self._future_meetings(channel))
+        if not meetings:
+            response = "There are no meetings scheduled for #%s." % channel
+            irc.reply(response.encode('utf-8'))
+            return
+
+        date, meeting = meetings[0]
+        response = "The next meeting in #%s is %s (starting %s)" % (
+            channel,
+            meeting['meeting_name'],
+            arrow.get(date).humanize(),
+        )
+        irc.reply(response.encode('utf-8'))
+        base = "https://apps.fedoraproject.org/calendar/location/"
+        url = base + urllib.quote("%s@irc.freenode.net/" % channel)
+        irc.reply("- " + url.encode('utf-8'))
+    nextmeeting = wrap(nextmeeting, ['text'])
+
+    @staticmethod
+    def _future_meetings(channel):
+        response = requests.get(
+            'https://apps.fedoraproject.org/calendar/api/meetings',
+            params=dict(
+                location='%s@irc.freenode.net' % channel,
+            )
+        )
+
+        data = response.json()
+        now = datetime.datetime.utcnow()
+
+        for meeting in data['meetings']:
+            string = meeting['meeting_date'] + " " + meeting['meeting_time_start']
+            dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+
+            if now < dt:
+                yield dt, meeting
 
     def badges(self, irc, msg, args, name):
         """<username>
