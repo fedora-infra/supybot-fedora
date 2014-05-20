@@ -184,7 +184,8 @@ class Fedora(callbacks.Plugin):
         self.log.info("Downloading user data")
         request = self.fasclient.send_request('/user/list',
                                               req_params={'search': '*'},
-                                              auth=True)
+                                              auth=True,
+                                              timeout=240)
         users = request['people'] + request['unapproved_people']
         del request
         self.log.info("Caching necessary user data")
