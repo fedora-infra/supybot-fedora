@@ -46,7 +46,7 @@ from fedora.client import AuthError
 from fedora.client import ServerError
 from fedora.client.fas2 import AccountSystem
 from fedora.client.fas2 import FASError
-from fedora.client.pkgdb import PackageDB
+from pkgdb2client import PkgDB
 
 from kitchen.text.converters import to_unicode
 
@@ -167,7 +167,7 @@ class Fedora(callbacks.Plugin):
 
         self.fasclient = AccountSystem(self.fasurl, username=self.username,
                                        password=self.password)
-        self.pkgdb = PackageDB()
+        self.pkgdb = PkgDB()
         # URLs
         #self.url = {}
 
@@ -202,7 +202,10 @@ class Fedora(callbacks.Plugin):
                                       '', user['email'] or '')
             self.faslist[key] = value
         self.log.info("Downloading package owners cache")
-        self.bugzacl = self.pkgdb.get_bugzilla_acls()
+        data = requests.get(
+            'https://admin.fedoraproject.org/pkgdb/api/bugzilla?format=json',
+            verify=True).json()
+        self.bugzacl = data['bugzillaAcls']
         socket.setdefaulttimeout(timeout)
 
     def refresh(self, irc, msg, args):
@@ -231,7 +234,7 @@ class Fedora(callbacks.Plugin):
             irc.reply("No such package exists.")
             return
         others = []
-        for key in self.bugzacl.keys():
+        for key in self.bugzacl:
             if key == 'Fedora':
                 continue
             try:
@@ -252,12 +255,12 @@ class Fedora(callbacks.Plugin):
 
         Return the branches a package is in."""
         try:
-            pkginfo = self.pkgdb.get_package_info(package)
+            pkginfo = self.pkgdb.get_package(package)
         except AppError:
             irc.reply("No such package exists.")
             return
         branch_list = []
-        for listing in pkginfo['packageListings']:
+        for listing in pkkinfo['packages']:
             branch_list.append(listing['collection']['branchname'])
         branch_list.sort()
         irc.reply(' '.join(branch_list))
