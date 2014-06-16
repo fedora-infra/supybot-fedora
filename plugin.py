@@ -260,7 +260,7 @@ class Fedora(callbacks.Plugin):
             irc.reply("No such package exists.")
             return
         branch_list = []
-        for listing in pkkinfo['packages']:
+        for listing in pkginfo['packages']:
             branch_list.append(listing['collection']['branchname'])
         branch_list.sort()
         irc.reply(' '.join(branch_list))
