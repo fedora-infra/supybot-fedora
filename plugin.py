@@ -569,23 +569,22 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _future_meetings(channel):
-        response = requests.get(
-            'https://apps.fedoraproject.org/calendar/api/meetings',
-            params=dict(
-                location='%s@irc.freenode.net' % channel,
-            )
-        )
-
-        data = response.json()
+        location='%s@irc.freenode.net' % channel
+        meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
-        for meeting in data['meetings']:
+        for meeting in meetings:
             string = "%s %s" % (meeting['meeting_date'],
                                 meeting['meeting_time_start'])
             dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now < dt:
                 yield dt, meeting
+
+    @staticmethod
+    def _query_fedocal(**kwargs):
+        url = 'https://apps.fedoraproject.org/calendar/api/meetings'
+        return requests.get(url, params=kwargs).json()['meetings']
 
     def badges(self, irc, msg, args, name):
         """<username>
