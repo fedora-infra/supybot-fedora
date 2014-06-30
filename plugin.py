@@ -542,6 +542,28 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
+    def vacation(self, irc, msg, args):
+        """
+
+        Return the list of people who are on vacation right now.
+        """
+
+        persons = list(self._on_vacation())
+
+        if not persons:
+            response = "Nobody is listed as being on vacation right now..."
+            irc.reply(response.encode('utf-8'))
+            url = "https://apps.fedoraproject.org/calendar/vacation/"
+            irc.reply("- " + url.encode('utf-8'))
+            return
+
+        persons = ", ".join(persons)
+        response = "The following people are on vacation: %s" % persons
+        irc.reply(response.encode('utf-8'))
+        url = "https://apps.fedoraproject.org/calendar/vacation/"
+        irc.reply("- " + url.encode('utf-8'))
+    vacation = wrap(vacation)
+
     def nextmeeting(self, irc, msg, args, channel):
         """<channel>
 
@@ -569,22 +591,37 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _future_meetings(channel):
-        response = requests.get(
-            'https://apps.fedoraproject.org/calendar/api/meetings',
-            params=dict(
-                location='%s@irc.freenode.net' % channel,
-            )
-        )
-
-        data = response.json()
+        location='%s@irc.freenode.net' % channel
+        meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
-        for meeting in data['meetings']:
-            string = meeting['meeting_date'] + " " + meeting['meeting_time_start']
+        for meeting in meetings:
+            string = "%s %s" % (meeting['meeting_date'],
+                                meeting['meeting_time_start'])
             dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now < dt:
                 yield dt, meeting
+
+    @staticmethod
+    def _on_vacation():
+        meetings = Fedora._query_fedocal(calendar="vacation")
+
+        for meeting in meetings:
+            string = "%s %s" % (meeting['meeting_date'],
+                                meeting['meeting_time_start'])
+            start = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+            string = "%s %s" % (meeting['meeting_date_end'],
+                                meeting['meeting_time_stop'])
+            end = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+
+            if now >= start and now <= end:
+                yield meeting['meeting_manager']
+
+    @staticmethod
+    def _query_fedocal(**kwargs):
+        url = 'https://apps.fedoraproject.org/calendar/api/meetings'
+        return requests.get(url, params=kwargs).json()['meetings']
 
     def badges(self, irc, msg, args, name):
         """<username>
