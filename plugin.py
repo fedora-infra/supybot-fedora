@@ -274,11 +274,17 @@ class Fedora(callbacks.Plugin):
         if not results:
             irc.reply('No pending pull requests on {slug}'.format(slug=slug))
         else:
-            for pull in results:
+            n = 4
+            for pull in results[:n]:
                 irc.reply('@{user}\'s "{title}" {url}'.format(
                     user=pull['user']['login'],
                     title=pull['title'],
                     url=pull['html_url']))
+
+            if len(results) > n:
+                irc.reply('... and %i more.' % (len(results) - n))
+
+
     pulls = wrap(pulls, ['text'])
 
     def whoowns(self, irc, msg, args, package):
