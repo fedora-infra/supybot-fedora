@@ -169,7 +169,7 @@ class Fedora(callbacks.Plugin):
                                        password=self.password)
         self.pkgdb = PackageDB()
         # URLs
-        #self.url = {}
+        # self.url = {}
 
         self.github_oauth_token = self.registryValue('github.oauth_token')
 
@@ -653,7 +653,7 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _future_meetings(channel):
-        location='%s@irc.freenode.net' % channel
+        location = '%s@irc.freenode.net' % channel
         meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
@@ -754,7 +754,7 @@ class Fedora(callbacks.Plugin):
 
         key_fmt = lambda d: ', '.join(sorted(d.keys()))
 
-        if not symbol in symbols:
+        if symbol not in symbols:
             response = "No such symbol %r.  Try one of %s"
             irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
             return
@@ -767,7 +767,7 @@ class Fedora(callbacks.Plugin):
             quarterly=datetime.timedelta(days=91),
         )
 
-        if not frame in frames:
+        if frame not in frames:
             response = "No such timeframe %r.  Try one of %s"
             irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
             return
