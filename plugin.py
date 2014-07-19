@@ -606,7 +606,7 @@ class Fedora(callbacks.Plugin):
     @staticmethod
     def _on_vacation():
         meetings = Fedora._query_fedocal(calendar="vacation")
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
 
         for meeting in meetings:
             string = "%s %s" % (meeting['meeting_date'],
@@ -714,7 +714,7 @@ class Fedora(callbacks.Plugin):
 
         category = [symbols[symbol]]
 
-        t2 = datetime.datetime.now()
+        t2 = datetime.datetime.utcnow()
         t1 = t2 - frames[frame]
         t0 = t1 - frames[frame]
 
