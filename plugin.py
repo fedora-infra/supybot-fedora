@@ -169,7 +169,9 @@ class Fedora(callbacks.Plugin):
                                        password=self.password)
         self.pkgdb = PackageDB()
         # URLs
-        #self.url = {}
+        # self.url = {}
+
+        self.github_oauth_token = self.registryValue('github.oauth_token')
 
         # fetch necessary caches
         self._refresh()
@@ -218,6 +220,72 @@ class Fedora(callbacks.Plugin):
         json = simplejson.loads(utils.web.getUrl(url))
         socket.setdefaulttimeout(timeout)
         return json
+
+    def pulls(self, irc, msg, args, slug):
+        """<username/repo>
+
+        List the pending pull requests on a github repo.
+        """
+
+        if slug.count('/') != 1:
+            irc.reply('Must be GitHub repo of the format <username/repo>')
+            return
+
+        username, repo = slug.strip().split('/')
+
+        tmpl = "https://api.github.com/repos/{username}/{repo}/" + \
+            "pulls?per_page=100"
+        url = tmpl.format(username=username, repo=repo)
+        auth = dict(access_token=self.github_oauth_token)
+
+        results = []
+        link = dict(next=url)
+        while 'next' in link:
+            response = requests.get(link['next'], params=auth)
+
+            if response.status_code == 404:
+                irc.reply('No such GitHub repository %r' % slug)
+                return
+
+            # And.. if we didn't get good results, just bail.
+            if response.status_code != 200:
+                raise IOError(
+                    "Non-200 status code %r; %r; %r" % (
+                        response.status_code, url, response.json))
+
+            if callable(response.json):
+                # Newer python-requests
+                results += response.json()
+            else:
+                # Older python-requests
+                results += response.json
+
+            field = response.headers.get('link', None)
+
+            link = dict()
+            if field:
+                link = dict([
+                    (
+                        part.split('; ')[1][5:-1],
+                        part.split('; ')[0][1:-1],
+                    ) for part in field.split(', ')
+                ])
+
+        if not results:
+            irc.reply('No pending pull requests on {slug}'.format(slug=slug))
+        else:
+            n = 4
+            for pull in results[:n]:
+                irc.reply('@{user}\'s "{title}" {url}'.format(
+                    user=pull['user']['login'],
+                    title=pull['title'],
+                    url=pull['html_url']))
+
+            if len(results) > n:
+                irc.reply('... and %i more.' % (len(results) - n))
+
+
+    pulls = wrap(pulls, ['text'])
 
     def whoowns(self, irc, msg, args, package):
         """<package>
@@ -591,7 +659,7 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _future_meetings(channel):
-        location='%s@irc.freenode.net' % channel
+        location = '%s@irc.freenode.net' % channel
         meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
@@ -694,7 +762,7 @@ class Fedora(callbacks.Plugin):
 
         key_fmt = lambda d: ', '.join(sorted(d.keys()))
 
-        if not symbol in symbols:
+        if symbol not in symbols:
             response = "No such symbol %r.  Try one of %s"
             irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
             return
@@ -707,7 +775,7 @@ class Fedora(callbacks.Plugin):
             quarterly=datetime.timedelta(days=91),
         )
 
-        if not frame in frames:
+        if frame not in frames:
             response = "No such timeframe %r.  Try one of %s"
             irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
             return
