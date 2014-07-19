@@ -606,6 +606,7 @@ class Fedora(callbacks.Plugin):
     @staticmethod
     def _on_vacation():
         meetings = Fedora._query_fedocal(calendar="vacation")
+        now = datetime.datetime.utcnow()
 
         for meeting in meetings:
             string = "%s %s" % (meeting['meeting_date'],
@@ -616,7 +617,8 @@ class Fedora(callbacks.Plugin):
             end = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now >= start and now <= end:
-                yield meeting['meeting_manager']
+                for manager in meeting['meeting_manager']:
+                    yield manager
 
     @staticmethod
     def _query_fedocal(**kwargs):
@@ -712,7 +714,7 @@ class Fedora(callbacks.Plugin):
 
         category = [symbols[symbol]]
 
-        t2 = datetime.datetime.now()
+        t2 = datetime.datetime.utcnow()
         t1 = t2 - frames[frame]
         t0 = t1 - frames[frame]
 
