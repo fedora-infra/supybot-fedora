@@ -58,5 +58,11 @@ conf.registerGlobalValue(
     registry.String('', """Password for the Fedora Account System""",
                     private=True))
 
+conf.registerGroup(Fedora, 'github')
+conf.registerGlobalValue(
+    Fedora.github, 'oauth_token',
+    registry.String('', """OAuth Token for the GitHub""",
+                    private=True))
+
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
