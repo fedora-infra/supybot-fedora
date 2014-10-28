@@ -614,13 +614,45 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
+    def pushduty(self, irc, msg, args):
+        """
+
+        Return the list of people who are on releng push duty right now.
+        """
+
+        def get_persons():
+            for meeting in self._meetings_for('release-engineering'):
+                yield meeting['meeting_name']
+
+        persons = list(get_persons())
+
+        url = "https://apps.fedoraproject.org/" + \
+            "calendar/release-engineering/"
+
+        if not persons:
+            response = "Nobody is listed as being on push duty right now..."
+            irc.reply(response.encode('utf-8'))
+            irc.reply("- " + url.encode('utf-8'))
+            return
+
+        persons = ", ".join(persons)
+        response = "The following people are on push duty: %s" % persons
+        irc.reply(response.encode('utf-8'))
+        irc.reply("- " + url.encode('utf-8'))
+    pushduty = wrap(pushduty)
+
     def vacation(self, irc, msg, args):
         """
 
         Return the list of people who are on vacation right now.
         """
 
-        persons = list(self._on_vacation())
+        def get_persons():
+            for meeting in self._meetings_for('vacation'):
+                for manager in meeting['meeting_manager']:
+                    yield manager
+
+        persons = list(get_persons())
 
         if not persons:
             response = "Nobody is listed as being on vacation right now..."
@@ -676,8 +708,8 @@ class Fedora(callbacks.Plugin):
                 yield dt, meeting
 
     @staticmethod
-    def _on_vacation():
-        meetings = Fedora._query_fedocal(calendar="vacation")
+    def _meetings_for(calendar):
+        meetings = Fedora._query_fedocal(calendar=calendar)
         now = datetime.datetime.utcnow()
 
         for meeting in meetings:
@@ -689,8 +721,7 @@ class Fedora(callbacks.Plugin):
             end = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now >= start and now <= end:
-                for manager in meeting['meeting_manager']:
-                    yield manager
+                yield meeting
 
     @staticmethod
     def _query_fedocal(**kwargs):
