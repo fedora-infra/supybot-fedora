@@ -46,7 +46,7 @@ from fedora.client import AuthError
 from fedora.client import ServerError
 from fedora.client.fas2 import AccountSystem
 from fedora.client.fas2 import FASError
-from fedora.client.pkgdb import PackageDB
+from pkgdb2client import PkgDB
 
 from kitchen.text.converters import to_unicode
 
@@ -167,9 +167,11 @@ class Fedora(callbacks.Plugin):
 
         self.fasclient = AccountSystem(self.fasurl, username=self.username,
                                        password=self.password)
-        self.pkgdb = PackageDB()
+        self.pkgdb = PkgDB()
         # URLs
-        #self.url = {}
+        # self.url = {}
+
+        self.github_oauth_token = self.registryValue('github.oauth_token')
 
         # fetch necessary caches
         self._refresh()
@@ -184,7 +186,8 @@ class Fedora(callbacks.Plugin):
         self.log.info("Downloading user data")
         request = self.fasclient.send_request('/user/list',
                                               req_params={'search': '*'},
-                                              auth=True)
+                                              auth=True,
+                                              timeout=240)
         users = request['people'] + request['unapproved_people']
         del request
         self.log.info("Caching necessary user data")
@@ -201,7 +204,10 @@ class Fedora(callbacks.Plugin):
                                       '', user['email'] or '')
             self.faslist[key] = value
         self.log.info("Downloading package owners cache")
-        self.bugzacl = self.pkgdb.get_bugzilla_acls()
+        data = requests.get(
+            'https://admin.fedoraproject.org/pkgdb/api/bugzilla?format=json',
+            verify=True).json()
+        self.bugzacl = data['bugzillaAcls']
         socket.setdefaulttimeout(timeout)
 
     def refresh(self, irc, msg, args):
@@ -219,6 +225,72 @@ class Fedora(callbacks.Plugin):
         socket.setdefaulttimeout(timeout)
         return json
 
+    def pulls(self, irc, msg, args, slug):
+        """<username/repo>
+
+        List the pending pull requests on a github repo.
+        """
+
+        if slug.count('/') != 1:
+            irc.reply('Must be GitHub repo of the format <username/repo>')
+            return
+
+        username, repo = slug.strip().split('/')
+
+        tmpl = "https://api.github.com/repos/{username}/{repo}/" + \
+            "pulls?per_page=100"
+        url = tmpl.format(username=username, repo=repo)
+        auth = dict(access_token=self.github_oauth_token)
+
+        results = []
+        link = dict(next=url)
+        while 'next' in link:
+            response = requests.get(link['next'], params=auth)
+
+            if response.status_code == 404:
+                irc.reply('No such GitHub repository %r' % slug)
+                return
+
+            # And.. if we didn't get good results, just bail.
+            if response.status_code != 200:
+                raise IOError(
+                    "Non-200 status code %r; %r; %r" % (
+                        response.status_code, url, response.json))
+
+            if callable(response.json):
+                # Newer python-requests
+                results += response.json()
+            else:
+                # Older python-requests
+                results += response.json
+
+            field = response.headers.get('link', None)
+
+            link = dict()
+            if field:
+                link = dict([
+                    (
+                        part.split('; ')[1][5:-1],
+                        part.split('; ')[0][1:-1],
+                    ) for part in field.split(', ')
+                ])
+
+        if not results:
+            irc.reply('No pending pull requests on {slug}'.format(slug=slug))
+        else:
+            n = 4
+            for pull in results[:n]:
+                irc.reply('@{user}\'s "{title}" {url}'.format(
+                    user=pull['user']['login'],
+                    title=pull['title'],
+                    url=pull['html_url']))
+
+            if len(results) > n:
+                irc.reply('... and %i more.' % (len(results) - n))
+
+
+    pulls = wrap(pulls, ['text'])
+
     def whoowns(self, irc, msg, args, package):
         """<package>
 
@@ -230,7 +302,7 @@ class Fedora(callbacks.Plugin):
             irc.reply("No such package exists.")
             return
         others = []
-        for key in self.bugzacl.keys():
+        for key in self.bugzacl:
             if key == 'Fedora':
                 continue
             try:
@@ -251,12 +323,12 @@ class Fedora(callbacks.Plugin):
 
         Return the branches a package is in."""
         try:
-            pkginfo = self.pkgdb.get_package_info(package)
+            pkginfo = self.pkgdb.get_package(package)
         except AppError:
             irc.reply("No such package exists.")
             return
         branch_list = []
-        for listing in pkginfo['packageListings']:
+        for listing in pkginfo['packages']:
             branch_list.append(listing['collection']['branchname'])
         branch_list.sort()
         irc.reply(' '.join(branch_list))
@@ -542,6 +614,60 @@ class Fedora(callbacks.Plugin):
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
+    def pushduty(self, irc, msg, args):
+        """
+
+        Return the list of people who are on releng push duty right now.
+        """
+
+        def get_persons():
+            for meeting in self._meetings_for('release-engineering'):
+                yield meeting['meeting_name']
+
+        persons = list(get_persons())
+
+        url = "https://apps.fedoraproject.org/" + \
+            "calendar/release-engineering/"
+
+        if not persons:
+            response = "Nobody is listed as being on push duty right now..."
+            irc.reply(response.encode('utf-8'))
+            irc.reply("- " + url.encode('utf-8'))
+            return
+
+        persons = ", ".join(persons)
+        response = "The following people are on push duty: %s" % persons
+        irc.reply(response.encode('utf-8'))
+        irc.reply("- " + url.encode('utf-8'))
+    pushduty = wrap(pushduty)
+
+    def vacation(self, irc, msg, args):
+        """
+
+        Return the list of people who are on vacation right now.
+        """
+
+        def get_persons():
+            for meeting in self._meetings_for('vacation'):
+                for manager in meeting['meeting_manager']:
+                    yield manager
+
+        persons = list(get_persons())
+
+        if not persons:
+            response = "Nobody is listed as being on vacation right now..."
+            irc.reply(response.encode('utf-8'))
+            url = "https://apps.fedoraproject.org/calendar/vacation/"
+            irc.reply("- " + url.encode('utf-8'))
+            return
+
+        persons = ", ".join(persons)
+        response = "The following people are on vacation: %s" % persons
+        irc.reply(response.encode('utf-8'))
+        url = "https://apps.fedoraproject.org/calendar/vacation/"
+        irc.reply("- " + url.encode('utf-8'))
+    vacation = wrap(vacation)
+
     def nextmeeting(self, irc, msg, args, channel):
         """<channel>
 
@@ -569,22 +695,38 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _future_meetings(channel):
-        response = requests.get(
-            'https://apps.fedoraproject.org/calendar/api/meetings',
-            params=dict(
-                location='%s@irc.freenode.net' % channel,
-            )
-        )
-
-        data = response.json()
+        location = '%s@irc.freenode.net' % channel
+        meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
-        for meeting in data['meetings']:
-            string = meeting['meeting_date'] + " " + meeting['meeting_time_start']
+        for meeting in meetings:
+            string = "%s %s" % (meeting['meeting_date'],
+                                meeting['meeting_time_start'])
             dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now < dt:
                 yield dt, meeting
+
+    @staticmethod
+    def _meetings_for(calendar):
+        meetings = Fedora._query_fedocal(calendar=calendar)
+        now = datetime.datetime.utcnow()
+
+        for meeting in meetings:
+            string = "%s %s" % (meeting['meeting_date'],
+                                meeting['meeting_time_start'])
+            start = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+            string = "%s %s" % (meeting['meeting_date_end'],
+                                meeting['meeting_time_stop'])
+            end = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+
+            if now >= start and now <= end:
+                yield meeting
+
+    @staticmethod
+    def _query_fedocal(**kwargs):
+        url = 'https://apps.fedoraproject.org/calendar/api/meetings'
+        return requests.get(url, params=kwargs).json()['meetings']
 
     def badges(self, irc, msg, args, name):
         """<username>
@@ -655,7 +797,7 @@ class Fedora(callbacks.Plugin):
 
         key_fmt = lambda d: ', '.join(sorted(d.keys()))
 
-        if not symbol in symbols:
+        if symbol not in symbols:
             response = "No such symbol %r.  Try one of %s"
             irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
             return
@@ -668,14 +810,14 @@ class Fedora(callbacks.Plugin):
             quarterly=datetime.timedelta(days=91),
         )
 
-        if not frame in frames:
+        if frame not in frames:
             response = "No such timeframe %r.  Try one of %s"
             irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
             return
 
         category = [symbols[symbol]]
 
-        t2 = datetime.datetime.now()
+        t2 = datetime.datetime.utcnow()
         t1 = t2 - frames[frame]
         t0 = t1 - frames[frame]
 
