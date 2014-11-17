@@ -247,11 +247,21 @@ class Fedora(callbacks.Plugin):
             repos = [repo]
         else:
             irc.reply('One moment, please...  Looking up %s.' % username)
-            repos = list(self.yield_github_repos(username))
+            try:
+                repos = list(self.yield_github_repos(username))
+            except IOError as e:
+                irc.reply('Could not find %s' % username)
+                self.log.exception(e.message)
+                return
 
-        results = sum([
-            list(self.yield_github_pulls(username, repo)) for repo in repos
-        ], [])
+        try:
+            results = sum([
+                list(self.yield_github_pulls(username, repo)) for repo in repos
+            ], [])
+        except IOError as e:
+            irc.reply('Could not find %s' % slug.strip())
+            self.log.exception(e.message)
+            return
 
         # Reverse-sort by time (newest-first)
         def comparator(a, b):
@@ -297,11 +307,14 @@ class Fedora(callbacks.Plugin):
         while 'next' in link:
             response = requests.get(link['next'], params=auth)
 
+            if response.status_code == 404:
+                raise IOError("404 for %r" % link['next'])
+
             # And.. if we didn't get good results, just bail.
             if response.status_code != 200:
                 raise IOError(
                     "Non-200 status code %r; %r; %r" % (
-                        response.status_code, url, response.json))
+                        response.status_code, link['next'], response.json))
 
             if callable(response.json):
                 # Newer python-requests
