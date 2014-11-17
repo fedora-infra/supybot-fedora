@@ -226,43 +226,105 @@ class Fedora(callbacks.Plugin):
         return json
 
     def pulls(self, irc, msg, args, slug):
-        """<username/repo>
+        """<username[/repo]>
 
-        List the pending pull requests on a github repo.
+        List the latest pending pull requests on github repos.
         """
 
-        if slug.count('/') != 1:
-            irc.reply('Must be GitHub repo of the format <username/repo>')
+        if not slug.strip():
+            irc.reply('Must be GitHub repo of the format '
+                      '<username/repo> or just <username>')
+        elif slug.count('/') == 0:
+            username, repo = slug.strip(), None
+        elif slug.count('/') == 1:
+            username, repo = slug.strip().split('/')
+        else:
+            irc.reply('Must be GitHub repo of the format '
+                      '<username/repo> or just <username>')
             return
 
-        username, repo = slug.strip().split('/')
+        if repo:
+            repos = [repo]
+        else:
+            irc.reply('One moment, please...  Looking up %s.' % username)
+            try:
+                repos = list(self.yield_github_repos(username))
+            except IOError as e:
+                irc.reply('Could not find %s' % username)
+                self.log.exception(e.message)
+                return
 
+        try:
+            results = sum([
+                list(self.yield_github_pulls(username, repo)) for repo in repos
+            ], [])
+        except IOError as e:
+            irc.reply('Could not find %s' % slug.strip())
+            self.log.exception(e.message)
+            return
+
+        # Reverse-sort by time (newest-first)
+        def comparator(a, b):
+            return cmp(arrow.get(b['created_at']), arrow.get(a['created_at']))
+        results.sort(comparator)
+
+        if not results:
+            irc.reply('No pending pull requests on {slug}'.format(slug=slug))
+        else:
+            n = 4
+            for pull in results[:n]:
+                irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
+                    user=pull['user']['login'],
+                    title=pull['title'],
+                    url=pull['html_url'],
+                    age=arrow.get(pull['created_at']).humanize(),
+                ))
+
+            if len(results) > n:
+                irc.reply('... and %i more.' % (len(results) - n))
+    pulls = wrap(pulls, ['text'])
+
+    def yield_github_repos(self, username):
+        self.log.info("Finding github repos for %r" % username)
+        tmpl = "https://api.github.com/users/{username}/repos?per_page=100"
+        url = tmpl.format(username=username)
+        auth = dict(access_token=self.github_oauth_token)
+        for result in self.yield_github_results(url, auth):
+            yield result['name']
+
+    def yield_github_pulls(self, username, repo):
+        self.log.info("Finding github pull requests for %r %r" % (username, repo))
         tmpl = "https://api.github.com/repos/{username}/{repo}/" + \
             "pulls?per_page=100"
         url = tmpl.format(username=username, repo=repo)
         auth = dict(access_token=self.github_oauth_token)
+        for result in self.yield_github_results(url, auth):
+            yield result
 
+    def yield_github_results(self, url, auth):
         results = []
         link = dict(next=url)
         while 'next' in link:
             response = requests.get(link['next'], params=auth)
 
             if response.status_code == 404:
-                irc.reply('No such GitHub repository %r' % slug)
-                return
+                raise IOError("404 for %r" % link['next'])
 
             # And.. if we didn't get good results, just bail.
             if response.status_code != 200:
                 raise IOError(
                     "Non-200 status code %r; %r; %r" % (
-                        response.status_code, url, response.json))
+                        response.status_code, link['next'], response.json))
 
             if callable(response.json):
                 # Newer python-requests
-                results += response.json()
+                results = response.json()
             else:
                 # Older python-requests
-                results += response.json
+                results = response.json
+
+            for result in results:
+                yield result
 
             field = response.headers.get('link', None)
 
@@ -274,22 +336,6 @@ class Fedora(callbacks.Plugin):
                         part.split('; ')[0][1:-1],
                     ) for part in field.split(', ')
                 ])
-
-        if not results:
-            irc.reply('No pending pull requests on {slug}'.format(slug=slug))
-        else:
-            n = 4
-            for pull in results[:n]:
-                irc.reply('@{user}\'s "{title}" {url}'.format(
-                    user=pull['user']['login'],
-                    title=pull['title'],
-                    url=pull['html_url']))
-
-            if len(results) > n:
-                irc.reply('... and %i more.' % (len(results) - n))
-
-
-    pulls = wrap(pulls, ['text'])
 
     def whoowns(self, irc, msg, args, package):
         """<package>
