@@ -717,6 +717,36 @@ class Fedora(callbacks.Plugin):
         irc.reply("- " + url.encode('utf-8'))
     vacation = wrap(vacation)
 
+    def nextmeetings(self, irc, msg, args):
+        """
+        Return the next meetings scheduled for any channel(s).
+        """
+        irc.reply('One moment, please...  Looking up the channel list.')
+        url = 'https://apps.fedoraproject.org/calendar/api/locations/'
+        locations = requests.get(url).json()['locations']
+        meetings = sorted(chain(*[
+            self._future_meetings(location)
+            for location in locations
+            if 'irc.freenode.net' in location
+        ]), key=itemgetter(0))
+
+        test, meetings = tee(meetings)
+        try:
+            test.next()
+        except StopIteration:
+            response = "There are no meetings scheduled at all."
+            irc.reply(response.encode('utf-8'))
+            return
+
+        for date, meeting in islice(meetings, 0, 5):
+            response = "In #%s is %s (starting %s)" % (
+                meeting['meeting_location'].split('@')[0].strip(),
+                meeting['meeting_name'],
+                arrow.get(date).humanize(),
+            )
+            irc.reply(response.encode('utf-8'))
+    nextmeetings = wrap(nextmeetings, [])
+
     def nextmeeting(self, irc, msg, args, channel):
         """<channel>
 
