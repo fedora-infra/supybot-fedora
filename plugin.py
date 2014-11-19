@@ -62,6 +62,9 @@ import pytz
 import datetime
 import threading
 
+from itertools import chain, islice, tee
+from operator import itemgetter
+
 SPARKLINE_RESOLUTION = 50
 
 datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
@@ -721,27 +724,32 @@ class Fedora(callbacks.Plugin):
         """
 
         channel = channel.strip('#').split('@')[0]
-        meetings = list(self._future_meetings(channel))
-        if not meetings:
+        meetings = sorted(self._future_meetings(channel), key=itemgetter(0))
+
+        test, meetings = tee(meetings)
+        try:
+            test.next()
+        except StopIteration:
             response = "There are no meetings scheduled for #%s." % channel
             irc.reply(response.encode('utf-8'))
             return
 
-        date, meeting = meetings[0]
-        response = "The next meeting in #%s is %s (starting %s)" % (
-            channel,
-            meeting['meeting_name'],
-            arrow.get(date).humanize(),
-        )
-        irc.reply(response.encode('utf-8'))
+        for date, meeting in islice(meetings, 0, 3):
+            response = "In #%s is %s (starting %s)" % (
+                channel,
+                meeting['meeting_name'],
+                arrow.get(date).humanize(),
+            )
+            irc.reply(response.encode('utf-8'))
         base = "https://apps.fedoraproject.org/calendar/location/"
         url = base + urllib.quote("%s@irc.freenode.net/" % channel)
         irc.reply("- " + url.encode('utf-8'))
     nextmeeting = wrap(nextmeeting, ['text'])
 
     @staticmethod
-    def _future_meetings(channel):
-        location = '%s@irc.freenode.net' % channel
+    def _future_meetings(location):
+        if not location.endswith('@irc.freenode.net'):
+            location = '%s@irc.freenode.net' % location
         meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
