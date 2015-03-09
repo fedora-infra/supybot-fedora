@@ -178,7 +178,9 @@ class Fedora(callbacks.Plugin):
         self.github_oauth_token = self.registryValue('github.oauth_token')
 
         self.karma_db_path = self.registryValue('karma.db_path')
-        self.allow_unaddressed_karma =self.registryValue('karma.unaddressed')
+        self.allow_unaddressed_karma = self.registryValue('karma.unaddressed')
+        self.allow_negative = self.registryValue('karma.allow_negative')
+        self.karma_tokens = ('++', '--') if self.allow_negative else ('++',)
 
         # fetch necessary caches
         self._refresh()
@@ -651,7 +653,7 @@ class Fedora(callbacks.Plugin):
 
         agent = msg.nick
         recip = tokens[-1]
-        if recip[-2:] in ('++', '--'):
+        if recip[-2:] in self.karma_tokens:
             self._do_karma(irc, channel, agent, recip, explicit=True)
 
     def doPrivmsg(self, irc, msg):
@@ -671,7 +673,7 @@ class Fedora(callbacks.Plugin):
             irc = callbacks.SimpleProxy(irc, msg)
             agent = msg.nick
             recip = msg.args[1].rstrip()
-            if recip[-2:] in ('++', '--'):
+            if recip[-2:] in self.karma_tokens:
                 self._do_karma(irc, channel, agent, recip, explicit=False)
 
 

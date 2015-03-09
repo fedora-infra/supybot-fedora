@@ -73,6 +73,9 @@ conf.registerGlobalValue(
 conf.registerGlobalValue(
     Fedora.karma, 'unaddressed',
     registry.Boolean(True, "Allow unaddressed karma commands"))
+conf.registerGlobalValue(
+    Fedora.karma, 'allow_negative',
+    registry.Boolean(True, "Allow negative karma to be given"))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
