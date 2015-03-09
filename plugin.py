@@ -30,6 +30,7 @@
 
 import arrow
 import sgmllib
+import shelve
 import htmlentitydefs
 import requests
 
@@ -176,6 +177,9 @@ class Fedora(callbacks.Plugin):
 
         self.github_oauth_token = self.registryValue('github.oauth_token')
 
+        self.karma_db_path = self.registryValue('karma.db_path')
+        self.allow_unaddressed_karma =self.registryValue('karma.unaddressed')
+
         # fetch necessary caches
         self._refresh()
 
@@ -196,6 +200,7 @@ class Fedora(callbacks.Plugin):
         self.log.info("Caching necessary user data")
         self.users = {}
         self.faslist = {}
+        self.nickmap = {}
         for user in users:
             name = user['username']
             self.users[name] = {}
@@ -206,6 +211,9 @@ class Fedora(callbacks.Plugin):
             value = "%s '%s' <%s>" % (user['username'], user['human_name'] or
                                       '', user['email'] or '')
             self.faslist[key] = value
+            if user['ircnick']:
+                self.nickmap[user['ircnick']] = name
+
         self.log.info("Downloading package owners cache")
         data = requests.get(
             'https://admin.fedoraproject.org/pkgdb/api/bugzilla?format=json',
@@ -217,6 +225,8 @@ class Fedora(callbacks.Plugin):
         """takes no arguments
 
         Refresh the necessary caches."""
+
+        irc.reply("Downloading caches.  This could take a while...")
         self._refresh()
         irc.replySuccess()
     refresh = wrap(refresh)
@@ -629,6 +639,151 @@ class Fedora(callbacks.Plugin):
         irc.reply(str('bork bork bork'))
         irc.reply(str('(supybot-fedora version %s)' % __version__))
     swedish = wrap(swedish)
+
+    def invalidCommand(self, irc, msg, tokens):
+        """ Handle any command not otherwise handled.
+
+        We use this to accept karma commands directly.
+        """
+        channel = msg.args[0]
+        if not irc.isChannel(channel):
+            return
+
+        agent = msg.nick
+        recip = tokens[-1]
+        if recip[-2:] in ('++', '--'):
+            self._do_karma(irc, channel, agent, recip, explicit=True)
+
+    def doPrivmsg(self, irc, msg):
+        """ Handle everything.
+
+        The name is misleading.  This hook actually gets called for all
+        IRC activity in every channel.
+        """
+        # We don't handle this if we've been addressed because invalidCommand
+        # will handle it for us.  This prevents us from accessing the db twice
+        # and therefore crashing.
+        if (msg.addressed or msg.repliedTo):
+            return
+
+        channel = msg.args[0]
+        if irc.isChannel(channel) and self.allow_unaddressed_karma:
+            irc = callbacks.SimpleProxy(irc, msg)
+            agent = msg.nick
+            recip = msg.args[1].rstrip()
+            if recip[-2:] in ('++', '--'):
+                self._do_karma(irc, channel, agent, recip, explicit=False)
+
+
+    def karma(self, irc, msg, args, name):
+        """<username>
+
+        Return the total karma for a FAS user."""
+        data = None
+        try:
+            data = shelve.open(self.karma_db_path)
+            votes = data['backwards'].get(name, {})
+        finally:
+            if data:
+                data.close()
+
+        inc = len([v for v in votes.values() if v == 1])
+        dec = len([v for v in votes.values() if v == -1])
+        total = inc - dec
+        if inc or dec:
+            irc.reply("Karma for %s has been increased %i times and "
+                      "decreased %i times for a total of %i" % (
+                        name, inc, dec, total))
+        else:
+            irc.reply("I have no karma data for %s" % name)
+
+    karma = wrap(karma, ['text'])
+
+    def _do_karma(self, irc, channel, agent, recip, explicit=False):
+        recip, direction = recip[:-2], recip[-2:]
+        if not recip:
+            return
+
+        increment = direction == '++' # If not, then it must be decrement
+
+        # Check that these are FAS users
+        if not agent in self.nickmap and not agent in self.users:
+            self.log.info(
+                "Saw %s from %s, but %s not in FAS" % (recip, agent, agent))
+            if explicit:
+                irc.reply("Couldn't find %s in FAS" % agent)
+            return
+
+        if not recip in self.nickmap and not recip in self.users:
+            self.log.info(
+                "Saw %s from %s, but %s not in FAS" % (recip, agent, recip))
+            if explicit:
+                irc.reply("Couldn't find %s in FAS" % recip)
+            return
+
+        # Transform irc nicks into fas usernames if possible.
+        if agent in self.nickmap:
+            agent = self.nickmap[agent]
+
+        if recip in self.nickmap:
+            recip = self.nickmap[recip]
+
+        if agent == recip:
+            irc.reply("You may not modify your own karma.")
+            return
+
+        # Check our karma db to make sure this hasn't already been done.
+        data = None
+        try:
+            data = shelve.open(self.karma_db_path)
+            if 'forwards' not in data or 'backwards' not in data:
+                data['forwards'], data['backwards'] = {}, {}
+
+            if agent not in data['forwards']:
+                forwards = data['forwards']
+                forwards[agent] = {}
+                data['forwards'] = forwards
+
+            if recip not in data['backwards']:
+                backwards = data['backwards']
+                backwards[recip] = {}
+                data['backwards'] = backwards
+
+            vote = 1 if increment else -1
+
+            if data['forwards'][agent].get(recip) == vote:
+                irc.reply(
+                    "You have already given %i karma to %s" % (vote, recip))
+                return
+
+            forwards = data['forwards']
+            forwards[agent][recip] = vote
+            data['forwards'] = forwards
+
+            backwards = data['backwards']
+            backwards[recip][agent] = vote
+            data['backwards'] = backwards
+
+            # Count the number of karmas for old so-and-so.
+            total = sum(data['backwards'][recip].values())
+        finally:
+            if data:
+                data.close()
+
+        fedmsg.publish(
+            name="supybot.%s" % socket.gethostname(),
+            modname="irc", topic="karma",
+            msg={
+                'agent': agent,
+                'recipient': recip,
+                'total': total,
+                'vote': vote,
+                'channel': channel,
+            },
+        )
+        ## No need to be spammy...  people will see this over fedmsg
+        #irc.reply('Karma for %r increased to %r' % (recip, value))
+
 
     def wikilink(self, irc, msg, args, name):
         """<username>

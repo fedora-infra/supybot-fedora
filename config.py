@@ -65,4 +65,14 @@ conf.registerGlobalValue(
                     private=True))
 
 
+conf.registerGroup(Fedora, 'karma')
+conf.registerGlobalValue(
+    Fedora.karma, 'db_path',
+    registry.String('/var/tmp/supybot-karma.db',
+                    """Path to a karma db on disk"""))
+conf.registerGlobalValue(
+    Fedora.karma, 'unaddressed',
+    registry.Boolean(True, "Allow unaddressed karma commands"))
+
+
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
