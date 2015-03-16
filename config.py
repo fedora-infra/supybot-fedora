@@ -70,6 +70,11 @@ conf.registerGlobalValue(
     Fedora.karma, 'db_path',
     registry.String('/var/tmp/supybot-karma.db',
                     """Path to a karma db on disk"""))
+# Here, 'unaddressed' commands are ones that are not directly addressed to the
+# supybot nick.  I.e., if this is set to False, then you must say
+#   'zodbot: pingou++'
+# If it it set to True, then you may say
+#   'pingou++'
 conf.registerGlobalValue(
     Fedora.karma, 'unaddressed',
     registry.Boolean(True, "Allow unaddressed karma commands"))
