@@ -679,7 +679,7 @@ class Fedora(callbacks.Plugin):
             for word in words:
                 if word[-2:] in self.karma_tokens:
                     self._do_karma(
-                        irc, channel, agent,word, line, explicit=False)
+                        irc, channel, agent, word, line, explicit=False)
 
 
     def karma(self, irc, msg, args, name):
