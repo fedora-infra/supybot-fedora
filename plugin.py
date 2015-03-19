@@ -706,6 +706,9 @@ class Fedora(callbacks.Plugin):
         if not recip:
             return
 
+        # Extract 'puiterwijk' out of 'have a cookie puiterwijk++'
+        recip = recip.strip().split()[-1]
+
         increment = direction == '++' # If not, then it must be decrement
 
         # Check that these are FAS users
