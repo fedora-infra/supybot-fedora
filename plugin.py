@@ -652,9 +652,11 @@ class Fedora(callbacks.Plugin):
             return
 
         agent = msg.nick
-        recip = tokens[-1]
-        if recip[-2:] in self.karma_tokens:
-            self._do_karma(irc, channel, agent, recip, explicit=True)
+        line = tokens[-1].strip()
+        words = line.split()
+        for word in words:
+            if word[-2:] in self.karma_tokens:
+                self._do_karma(irc, channel, agent, word, line, explicit=True)
 
     def doPrivmsg(self, irc, msg):
         """ Handle everything.
@@ -672,9 +674,12 @@ class Fedora(callbacks.Plugin):
         if irc.isChannel(channel) and self.allow_unaddressed_karma:
             irc = callbacks.SimpleProxy(irc, msg)
             agent = msg.nick
-            recip = msg.args[1].rstrip()
-            if recip[-2:] in self.karma_tokens:
-                self._do_karma(irc, channel, agent, recip, explicit=False)
+            line = msg.args[1].strip()
+            words = line.split()
+            for word in words:
+                if word[-2:] in self.karma_tokens:
+                    self._do_karma(
+                        irc, channel, agent,word, line, explicit=False)
 
 
     def karma(self, irc, msg, args, name):
@@ -701,7 +706,7 @@ class Fedora(callbacks.Plugin):
 
     karma = wrap(karma, ['text'])
 
-    def _do_karma(self, irc, channel, agent, recip, explicit=False):
+    def _do_karma(self, irc, channel, agent, recip, line, explicit=False):
         recip, direction = recip[:-2], recip[-2:]
         if not recip:
             return
@@ -784,6 +789,7 @@ class Fedora(callbacks.Plugin):
                 'total': total,
                 'vote': vote,
                 'channel': channel,
+                'line': line,
             },
         )
         ## No need to be spammy...  people will see this over fedmsg
