@@ -762,8 +762,10 @@ class Fedora(callbacks.Plugin):
             vote = 1 if increment else -1
 
             if data['forwards'][agent].get(recip) == vote:
-                irc.reply(
-                    "You have already given %i karma to %s" % (vote, recip))
+                ## People found this response annoying.
+                ## https://github.com/fedora-infra/supybot-fedora/issues/25
+                #irc.reply(
+                #    "You have already given %i karma to %s" % (vote, recip))
                 return
 
             forwards = data['forwards']
@@ -792,8 +794,9 @@ class Fedora(callbacks.Plugin):
                 'line': line,
             },
         )
-        ## No need to be spammy...  people will see this over fedmsg
-        #irc.reply('Karma for %r increased to %r' % (recip, value))
+
+        url = self.registryValue('karma.url')
+        irc.reply('Karma for %s changed to %r:  %s' % (recip, total, url))
 
 
     def wikilink(self, irc, msg, args, name):
