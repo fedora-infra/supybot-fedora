@@ -75,6 +75,10 @@ conf.registerGlobalValue(
     Fedora.karma, 'db_path',
     registry.String('/var/tmp/supybot-karma.db',
                     """Path to a karma db on disk"""))
+conf.registerGlobalValue(
+    Fedora.karma, 'url',
+    registry.String('https://badges.fedoraproject.org/badge/macaron-cookie-i',
+                    """URL to link people to about karma."""))
 # Here, 'unaddressed' commands are ones that are not directly addressed to the
 # supybot nick.  I.e., if this is set to False, then you must say
 #   'zodbot: pingou++'
