@@ -34,6 +34,12 @@ import shelve
 import htmlentitydefs
 import requests
 
+# Use re2 if present.  It is faster.
+try:
+    import re2 as re
+except ImportError:
+    import re
+
 import supybot.utils as utils
 import supybot.conf as conf
 import time
@@ -675,12 +681,20 @@ class Fedora(callbacks.Plugin):
             irc = callbacks.SimpleProxy(irc, msg)
             agent = msg.nick
             line = msg.args[1].strip()
+
+            # First try to handle karma commands
             words = line.split()
             for word in words:
                 if word[-2:] in self.karma_tokens:
                     self._do_karma(
                         irc, channel, agent, word, line, explicit=False)
 
+            # Also, handle naked pings for
+            # https://github.com/fedora-infra/supybot-fedora/issues/26
+            pattern = '\w* ?[:,] ?ping\W*$'
+            if re.match(pattern, line):
+                admonition = self.registryValue('naked_ping_admonition')
+                irc.reply(admonition)
 
     def karma(self, irc, msg, args, name):
         """<username>

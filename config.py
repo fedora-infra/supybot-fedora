@@ -41,6 +41,12 @@ def configure(advanced):
 
 
 Fedora = conf.registerPlugin('Fedora')
+conf.registerGlobalValue(
+    Fedora, 'naked_ping_admonition',
+    registry.String('https://blogs.gnome.org/markmc/2014/02/20/naked-pings/',
+                    """Response to people who use a naked ping in channel."""))
+
+
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
