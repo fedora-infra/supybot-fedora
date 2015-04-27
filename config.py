@@ -36,11 +36,16 @@ def configure(advanced):
     # a bool that specifies whether the user identified himself as an advanced
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
-    from supybot.questions import expect, anything, something, yn
     conf.registerPlugin('Fedora', True)
 
 
 Fedora = conf.registerPlugin('Fedora')
+conf.registerGlobalValue(
+    Fedora, 'naked_ping_admonition',
+    registry.String('https://blogs.gnome.org/markmc/2014/02/20/naked-pings/',
+                    """Response to people who use a naked ping in channel."""))
+
+
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
@@ -70,6 +75,10 @@ conf.registerGlobalValue(
     Fedora.karma, 'db_path',
     registry.String('/var/tmp/supybot-karma.db',
                     """Path to a karma db on disk"""))
+conf.registerGlobalValue(
+    Fedora.karma, 'url',
+    registry.String('https://badges.fedoraproject.org/badge/macaron-cookie-i',
+                    """URL to link people to about karma."""))
 # Here, 'unaddressed' commands are ones that are not directly addressed to the
 # supybot nick.  I.e., if this is set to False, then you must say
 #   'zodbot: pingou++'

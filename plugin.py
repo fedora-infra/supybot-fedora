@@ -33,20 +33,21 @@ import sgmllib
 import shelve
 import htmlentitydefs
 import requests
+import time
+
+# Use re2 if present.  It is faster.
+try:
+    import re2 as re
+except ImportError:
+    import re
 
 import supybot.utils as utils
 import supybot.conf as conf
-import time
-from supybot.commands import *
-import supybot.plugins as plugins
-import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+from supybot.commands import wrap
 
 from fedora.client import AppError
-from fedora.client import AuthError
-from fedora.client import ServerError
 from fedora.client.fas2 import AccountSystem
-from fedora.client.fas2 import FASError
 from pkgdb2client import PkgDB
 
 from kitchen.text.converters import to_unicode
@@ -56,8 +57,6 @@ import fedmsg.meta
 
 import simplejson
 import urllib
-import commands
-import urllib2
 import socket
 import pytz
 import datetime
@@ -271,7 +270,7 @@ class Fedora(callbacks.Plugin):
 
         try:
             results = sum([
-                list(self.yield_github_pulls(username, repo)) for repo in repos
+                list(self.yield_github_pulls(username, r)) for r in repos
             ], [])
         except IOError as e:
             irc.reply('Could not find %s' % slug.strip())
@@ -481,8 +480,8 @@ class Fedora(callbacks.Plugin):
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
         except:
-            irc.reply('The timezone of "%s" was unknown: "%s"' % (name,
-                                                                  timezone))
+            irc.reply('The timezone of "%s" was unknown: "%s"' % (
+                name, timezone_name))
             return
         irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
                   (name, time.strftime('%H:%M'), timezone_name))
@@ -675,12 +674,20 @@ class Fedora(callbacks.Plugin):
             irc = callbacks.SimpleProxy(irc, msg)
             agent = msg.nick
             line = msg.args[1].strip()
+
+            # First try to handle karma commands
             words = line.split()
             for word in words:
                 if word[-2:] in self.karma_tokens:
                     self._do_karma(
                         irc, channel, agent, word, line, explicit=False)
 
+            # Also, handle naked pings for
+            # https://github.com/fedora-infra/supybot-fedora/issues/26
+            pattern = '\w* ?[:,] ?ping\W*$'
+            if re.match(pattern, line):
+                admonition = self.registryValue('naked_ping_admonition')
+                irc.reply(admonition)
 
     def karma(self, irc, msg, args, name):
         """<username>
@@ -762,8 +769,10 @@ class Fedora(callbacks.Plugin):
             vote = 1 if increment else -1
 
             if data['forwards'][agent].get(recip) == vote:
-                irc.reply(
-                    "You have already given %i karma to %s" % (vote, recip))
+                ## People found this response annoying.
+                ## https://github.com/fedora-infra/supybot-fedora/issues/25
+                #irc.reply(
+                #    "You have already given %i karma to %s" % (vote, recip))
                 return
 
             forwards = data['forwards']
@@ -792,8 +801,9 @@ class Fedora(callbacks.Plugin):
                 'line': line,
             },
         )
-        ## No need to be spammy...  people will see this over fedmsg
-        #irc.reply('Karma for %r increased to %r' % (recip, value))
+
+        url = self.registryValue('karma.url')
+        irc.reply('Karma for %s changed to %r:  %s' % (recip, total, url))
 
 
     def wikilink(self, irc, msg, args, name):
