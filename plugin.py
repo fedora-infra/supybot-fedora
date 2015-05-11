@@ -682,6 +682,8 @@ class Fedora(callbacks.Plugin):
                     self._do_karma(
                         irc, channel, agent, word, line, explicit=False)
 
+        blacklist = self.registryValue('naked_ping_channel_blacklist')
+        if irc.isChannel(channel) and not channel in blacklist:
             # Also, handle naked pings for
             # https://github.com/fedora-infra/supybot-fedora/issues/26
             pattern = '\w* ?[:,] ?ping\W*$'
