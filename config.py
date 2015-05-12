@@ -44,6 +44,10 @@ conf.registerGlobalValue(
     Fedora, 'naked_ping_admonition',
     registry.String('https://blogs.gnome.org/markmc/2014/02/20/naked-pings/',
                     """Response to people who use a naked ping in channel."""))
+conf.registerGlobalValue(
+    Fedora, 'naked_ping_channel_blacklist',
+    registry.CommaSeparatedListOfStrings(
+        '', 'List of channels where not to admonish naked pings'))
 
 
 # This is where your configuration variables (if any) should go.  For example:
