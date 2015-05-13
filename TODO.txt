@@ -4,3 +4,6 @@
   disabled (not currently possible, the config setting is only readable by
   that user, not anybody)
 - function to query the last time the cache was refreshed
+
+- Re-work the plugin src dir with a toplevel dir.
+- Bootstrap the whole setup.

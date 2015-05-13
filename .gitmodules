@@ -1,0 +1,9 @@
+[submodule "lib/python-fedora"]
+	path = lib/python-fedora
+	url = git@github.com:fedora-infra/python-fedora.git
+[submodule "lib/packagedb-cli"]
+	path = lib/packagedb-cli
+	url = git@github.com:fedora-infra/packagedb-cli.git
+[submodule "lib/fedmsg"]
+	path = lib/fedmsg
+	url = git@github.com:fedora-infra/fedmsg.git
