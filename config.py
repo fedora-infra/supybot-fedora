@@ -56,16 +56,14 @@ conf.registerGlobalValue(
 conf.registerGroup(Fedora, 'fas')
 conf.registerGlobalValue(
     Fedora.fas, 'url',
-    registry.String('https://admin.fedoraproject.org/accounts/',
+    registry.String('http://localhost:6543/',
                     """URL for the Fedora Account System"""))
 conf.registerGlobalValue(
-    Fedora.fas, 'username',
-    registry.String('', """Username for the Fedora Account System""",
-                    private=True))
-conf.registerGlobalValue(
-    Fedora.fas, 'password',
-    registry.String('', """Password for the Fedora Account System""",
-                    private=True))
+    Fedora.fas, 'apikey',
+    registry.String('',
+                    """API key for the Fedora Account System""",
+                    private=True)
+)
 
 conf.registerGroup(Fedora, 'github')
 conf.registerGlobalValue(
