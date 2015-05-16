@@ -3,3 +3,10 @@
 *.pyo
 *.swp
 dist
+conf
+logs
+backup
+data
+.idea
+*.conf
+*.conf.bak

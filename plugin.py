@@ -163,8 +163,8 @@ class Fedora(callbacks.Plugin):
         self.userlist = None
         self.bugzacl = None
 
-        # To get the information, we need a username and password to FAS.
-        # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
+        # To get the information, we need an api key to talk to FAS.
+        # DO NOT COMMIT YOUR API KEY TO THE PUBLIC REPOSITORY!
         self.fasurl = self.registryValue('fas.url')
         self.fasapikey = self.registryValue('fas.apikey')
 
@@ -446,7 +446,7 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('Sorry, but you don\'t exist')
             return
-        irc.reply(('%(Username)s \'%(Fullname)s\' <%(Email)s>' %
+        irc.reply(('%(username)s \'%(fullname)s\' <%(email)s>' %
                    person).encode('utf-8'))
 
     hellomynameis = wrap(hellomynameis, ['text'])
@@ -465,7 +465,7 @@ class Fedora(callbacks.Plugin):
             irc.reply('Sorry, but you don\'t exist')
             return
 
-        irc.reply(('%(Username)s \'Slim Shady\' <%(Email)s>' %
+        irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
                    person).encode('utf-8'))
 
     himynameis = wrap(himynameis, ['text'])
@@ -483,7 +483,7 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('User "%s" doesn\'t exist' % name)
             return
-        timezone_name = person.Timezone
+        timezone_name = person.timezone
         if timezone_name is None:
             irc.reply('User "%s" doesn\'t share his timezone' % name)
             return
@@ -511,27 +511,27 @@ class Fedora(callbacks.Plugin):
             irc.reply('User "%s" doesn\'t exist' % name)
             return
 
-        person['CreationDate'] = person['CreationDate'].split(' ')[0]
+        person.creationDate = person.creationDate.split(' ')[0]
 
-        string = ("User: %(Username)s, FullName: %(Fullname)s"
-                  ", email: %(Email)s, Creation: %(CreationDate)s"
-                  ", IRC Nick: %(Ircnick)s, Timezone: %(Timezone)s"
-                  ", Locale: %(Locale)s"
-                  ", GPG key ID: %(GpgId)s, Status: %(Status)s") % person
+        string = ("User: %(username)s, FullName: %(fullname)s"
+                  ", email: %(email)s, Creation: %(creationDate)s"
+                  ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
+                  ", Locale: %(locale)s"
+                  ", GPG key ID: %(gpgId)s, Status: %(status)s") % person
         irc.reply(string.encode('utf-8'))
 
-        membership = person.Membership
+        membership = person.membership
 
         # List of approved groups requires a separate query to extract roles
         approved = str()
         for role in membership:
-            if role.Status == MembershipStatus.APPROVED:
-                if role.GroupRole == GroupRole.SPONSOR:
-                    approved += '+' + role.GroupName + ' '
-                elif role.GroupRole == GroupRole.ADMINISTRATOR:
-                    approved += '@' + role.GroupName + ' '
+            if role.status == MembershipStatus.APPROVED:
+                if role.groupRole == GroupRole.SPONSOR:
+                    approved += '+' + role.groupName + ' '
+                elif role.groupRole == GroupRole.ADMINISTRATOR:
+                    approved += '@' + role.groupName + ' '
                 else:
-                    approved += role.GroupName + ' '
+                    approved += role.groupName + ' '
         if approved == '':
             approved = "None"
 
@@ -540,8 +540,8 @@ class Fedora(callbacks.Plugin):
         # List of unapproved groups is easy
         unapproved = str()
         for ms in membership:
-            if ms.Status == MembershipStatus.PENDING:
-                unapproved += "%s " % ms.GroupName
+            if ms.status == MembershipStatus.PENDING:
+                unapproved += "%s " % ms.groupName
         if unapproved != '':
             irc.reply('Pending Groups Membership request: %s' % unapproved)
 
@@ -554,7 +554,7 @@ class Fedora(callbacks.Plugin):
         try:
             group = self.fasclient.get_group_by_name(name)
             irc.reply('%s: %s (%i members)' %
-                      (name, group.DisplayName, len(group.Members))
+                      (name, group.displayName, len(group.members))
             )
         except AppError:
             irc.reply('There is no group "%s".' % name)
@@ -569,8 +569,8 @@ class Fedora(callbacks.Plugin):
         try:
             group = self.fasclient.get_group_by_name(name)
             sponsors = ''
-            for person in group.Members:
-                if person.Role == GroupRole.ADMINISTRATOR:
+            for person in group.members:
+                if person.role == GroupRole.ADMINISTRATOR:
                     sponsors += person.Name + ' '
             irc.reply('Administrators for %s: %s' % (name, sponsors))
         except AppError:
@@ -586,11 +586,11 @@ class Fedora(callbacks.Plugin):
         try:
             group = self.fasclient.get_group_by_name(name)
             sponsors = ''
-            for person in group.Members:
-                if person.Role == GroupRole.SPONSOR:
-                    sponsors += person.Name + ' '
-                elif person.Role == GroupRole.ADMINISTRATOR:
-                    sponsors += '@' + person.Name + ' '
+            for person in group.members:
+                if person.role == GroupRole.SPONSOR:
+                    sponsors += person.name + ' '
+                elif person.role == GroupRole.ADMINISTRATOR:
+                    sponsors += '@' + person.name + ' '
             irc.reply('Sponsors for %s: %s' % (name, sponsors))
         except AppError:
             irc.reply('There is no group %s.' % name)
@@ -604,13 +604,13 @@ class Fedora(callbacks.Plugin):
         try:
             group = self.fasclient.get_group_by_name(name)
             members = ''
-            for person in group.Members:
-                if person.Role == GroupRole.ADMINISTRATOR:
-                    members += '@' + person.Name + ' '
-                elif person.Role == GroupRole.SPONSOR:
-                    members += '+' + person.Name + ' '
+            for person in group.members:
+                if person.role == GroupRole.ADMINISTRATOR:
+                    members += '@' + person.name + ' '
+                elif person.role == GroupRole.SPONSOR:
+                    members += '+' + person.name + ' '
                 else:
-                    members += person.Name + ' '
+                    members += person.name + ' '
             irc.reply('Members of %s: %s' % (name, members))
         except AppError:
             irc.reply('There is no group %s.' % name)
