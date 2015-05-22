@@ -1,5 +1,6 @@
-ns for supybot
+Supybot's plugin for the Fedora Project
 ==
+
 
 ### TO INSTALL:
 
@@ -27,7 +28,7 @@ Setup your virtual env and fetch submodules
     git submodule init
     git submodule update
 
-Install libs so that you would be able to hack them as well in same virtenv
+Install libs so that you would be able to hack them as well into same virtual env
 
     pip install -e lib/python-fedora
     pip install -e lib/packagedb-cli
