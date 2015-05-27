@@ -830,14 +830,14 @@ class Fedora(callbacks.Plugin):
 
         Return MirrorManager list of FAS usernames which administer <hostname>.
         <hostname> must be the FQDN of the host."""
-        url = ("https://admin.fedoraproject.org/mirrormanager/mirroradmins?"
-               "tg_format=json&host=" + hostname)
-        result = self._load_json(url)['values']
-        if len(result) == 0:
-            irc.reply('Hostname "%s" not found' % hostname)
+        url = ("https://admin.fedoraproject.org/mirrormanager/api/"
+               "mirroradmins?name=" + hostname)
+        result = self._load_json(url)
+        if not 'admins' in result:
+            irc.reply(result.get('message', 'Something went wrong')
             return
         string = 'Mirror Admins of %s: ' % hostname
-        string += ' '.join(result)
+        string += ' '.join(result['admins'])
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
