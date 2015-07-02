@@ -838,7 +838,7 @@ class Fedora(callbacks.Plugin):
                "mirroradmins?name=" + hostname)
         result = self._load_json(url)
         if not 'admins' in result:
-            irc.reply(result.get('message', 'Something went wrong')
+            irc.reply(result.get('message', 'Something went wrong'))
             return
         string = 'Mirror Admins of %s: ' % hostname
         string += ' '.join(result['admins'])
