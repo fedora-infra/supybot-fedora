@@ -723,6 +723,11 @@ class Fedora(callbacks.Plugin):
         # Extract 'puiterwijk' out of 'have a cookie puiterwijk++'
         recip = recip.strip().split()[-1]
 
+        # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
+        if len(recip) == 1:
+            if recip.capitalize() in ['C','G','I']:
+                return
+        
         increment = direction == '++' # If not, then it must be decrement
 
         # Check that these are FAS users
