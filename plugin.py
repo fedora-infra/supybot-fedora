@@ -724,7 +724,7 @@ class Fedora(callbacks.Plugin):
         recip = recip.strip().split()[-1]
 
         # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
-        if recip.lower() in ['c','g','i']:
+        if str(recip).lower() in ['c','g','i']:
             return
         
         increment = direction == '++' # If not, then it must be decrement
