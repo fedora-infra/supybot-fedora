@@ -723,6 +723,10 @@ class Fedora(callbacks.Plugin):
         # Extract 'puiterwijk' out of 'have a cookie puiterwijk++'
         recip = recip.strip().split()[-1]
 
+        # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
+        if str(recip).lower() in ['c','g','i']:
+            return
+        
         increment = direction == '++' # If not, then it must be decrement
 
         # Check that these are FAS users
@@ -834,7 +838,7 @@ class Fedora(callbacks.Plugin):
                "mirroradmins?name=" + hostname)
         result = self._load_json(url)
         if not 'admins' in result:
-            irc.reply(result.get('message', 'Something went wrong')
+            irc.reply(result.get('message', 'Something went wrong'))
             return
         string = 'Mirror Admins of %s: ' % hostname
         string += ' '.join(result['admins'])
