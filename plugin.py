@@ -698,6 +698,8 @@ class Fedora(callbacks.Plugin):
         data = None
         try:
             data = shelve.open(self.karma_db_path)
+            if name in self.nickmap:
+                name = self.nickmap[name]
             votes = data['backwards'].get(name, {})
         finally:
             if data:
