@@ -285,7 +285,7 @@ class Fedora(callbacks.Plugin):
         if not results:
             irc.reply('No pending pull requests on {slug}'.format(slug=slug))
         else:
-            n = 4
+            n = 6  # Show 6 pull requests
             for pull in results[:n]:
                 irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
                     user=pull['user']['login'],
