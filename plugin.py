@@ -774,7 +774,7 @@ class Fedora(callbacks.Plugin):
         # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
         if str(recip).lower() in ['c','g','i']:
             return
-        
+
         increment = direction == '++' # If not, then it must be decrement
 
         # Check that these are FAS users
