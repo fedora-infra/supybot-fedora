@@ -845,7 +845,13 @@ class Fedora(callbacks.Plugin):
             data[bkey] = backwards
 
             # Count the number of karmas for old so-and-so.
-            total = sum(data[bkey][recip].values())
+            total_this_release = sum(data[bkey][recip].values())
+
+            total_all_time = 0
+            for key in data:
+                if 'backwards-' not in key:
+                    continue
+                total_all_time += sum(data[key].get(recip, {}).values())
         finally:
             if data:
                 data.close()
@@ -856,7 +862,8 @@ class Fedora(callbacks.Plugin):
             msg={
                 'agent': agent,
                 'recipient': recip,
-                'total': total,
+                'total': total_all_time,  # The badge rules use this value
+                'total_this_release': total_this_release,
                 'vote': vote,
                 'channel': channel,
                 'line': line,
@@ -867,7 +874,8 @@ class Fedora(callbacks.Plugin):
         url = self.registryValue('karma.url')
         irc.reply(
             'Karma for %s changed to %r '
-            '(for the %s release cycle):  %s' % (recip, total, release, url))
+            '(for the %s release cycle):  %s' % (
+                recip, total_this_release, release, url))
 
 
     def wikilink(self, irc, msg, args, name):
