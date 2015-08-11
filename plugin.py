@@ -809,42 +809,43 @@ class Fedora(callbacks.Plugin):
         data = None
         try:
             data = shelve.open(self.karma_db_path)
+            fkey = 'forwards-' + release
+            bkey = 'backwards-' + release
+            if fkey not in data:
+                data[fkey] = {}
 
-            if 'forwards-' + release not in data:
-                data['forwards-' + release] = {}
+            if bkey not in data:
+                data[bkey] = {}
 
-            if 'backwards-' + release not in data:
-                data['backwards-' + release] = {}
-
-            if agent not in data['forwards-' + release]:
-                forwards = data['forwards-' + release]
+            if agent not in data[fkey]:
+                forwards = data[fkey]
                 forwards[agent] = {}
-                data['forwards-' + release] = forwards
+                data[fkey] = forwards
 
-            if recip not in data['backwards-' + release]:
-                backwards = data['backwards-' + release]
+            if recip not in data[bkey]:
+                backwards = data[bkey]
                 backwards[recip] = {}
-                data['backwards-' + release] = backwards
+                data[bkey] = backwards
 
             vote = 1 if increment else -1
 
-            if data['forwards-' + release][agent].get(recip) == vote:
+            if data[fkey][agent].get(recip) == vote:
                 ## People found this response annoying.
                 ## https://github.com/fedora-infra/supybot-fedora/issues/25
                 #irc.reply(
                 #    "You have already given %i karma to %s" % (vote, recip))
                 return
 
-            forwards = data['forwards-' + release]
+            forwards = data[fkey]
             forwards[agent][recip] = vote
-            data['forwards-' + release] = forwards
+            data[fkey] = forwards
 
-            backwards = data['backwards-' + release]
+            backwards = data[bkey]
             backwards[recip][agent] = vote
-            data['backwards-' + release] = backwards
+            data[bkey] = backwards
 
             # Count the number of karmas for old so-and-so.
-            total = sum(data['backwards-' + release][recip].values())
+            total = sum(data[bkey][recip].values())
         finally:
             if data:
                 data.close()
