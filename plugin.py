@@ -252,56 +252,53 @@ class Fedora(callbacks.Plugin):
     def pulls(self, irc, msg, args, slug):
         """<username[/repo]>
 
-        List the latest pending pull requests on github repos.
+        List the latest pending pull requests on github/pagure repos.
         """
 
-        if not slug.strip():
-            irc.reply('Must be GitHub repo of the format '
-                      '<username/repo> or just <username>')
-        elif slug.count('/') == 0:
-            username, repo = slug.strip(), None
-        elif slug.count('/') == 1:
-            username, repo = slug.strip().split('/')
-        else:
-            irc.reply('Must be GitHub repo of the format '
-                      '<username/repo> or just <username>')
+        slug = slug.strip()
+        if not slug or slug.count('/') != 0:
+            irc.reply('Must be a GitHub org/username or pagure tag')
             return
 
-        if repo:
-            repos = [repo]
-        else:
-            irc.reply('One moment, please...  Looking up %s.' % username)
-            try:
-                repos = list(self.yield_github_repos(username))
-            except IOError as e:
-                irc.reply('Could not find %s' % username)
-                self.log.exception(e.message)
-                return
+        irc.reply('One moment, please...  Looking up %s.' % slug)
+        fail_on_github, fail_on_pagure = False, False
+        github_repos, pagure_repos = [], []
+        try:
+            github_repos = list(self.yield_github_repos(slug))
+        except IOError as e:
+            self.log.exception(e.message)
+            fail_on_github = True
 
         try:
-            results = sum([
-                list(self.yield_github_pulls(username, r)) for r in repos
-            ], [])
+            pagure_repos = list(self.yield_pagure_repos(slug))
         except IOError as e:
-            irc.reply('Could not find %s' % slug.strip())
             self.log.exception(e.message)
+            fail_on_pagure = True
+
+        if fail_on_github and fail_on_pagure:
+            irc.reply('Could not find %s on GitHub or pagure.io' % slug)
             return
 
+        results = sum([
+            list(self.yield_github_pulls(slug, r)) for r in github_repos
+        ], []) + sum([
+            list(self.yield_pagure_pulls(slug, r)) for r in pagure_repos
+        ], [])
+
         # Reverse-sort by time (newest-first)
-        def comparator(a, b):
-            return cmp(arrow.get(b['created_at']), arrow.get(a['created_at']))
+        comparator = lambda a, b: cmp(b['age_numeric'], a['age_numeric'])
         results.sort(comparator)
 
         if not results:
             irc.reply('No pending pull requests on {slug}'.format(slug=slug))
         else:
-            n = 4
+            n = 6  # Show 6 pull requests
             for pull in results[:n]:
                 irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
-                    user=pull['user']['login'],
+                    user=pull['user'],
                     title=pull['title'],
-                    url=pull['html_url'],
-                    age=arrow.get(pull['created_at']).humanize(),
+                    url=pull['url'],
+                    age=pull['age'],
                 ))
 
             if len(results) > n:
@@ -323,7 +320,13 @@ class Fedora(callbacks.Plugin):
         url = tmpl.format(username=username, repo=repo)
         auth = dict(access_token=self.github_oauth_token)
         for result in self.yield_github_results(url, auth):
-            yield result
+            yield dict(
+                user=result['user']['login'],
+                title=result['title'],
+                url=result['html_url'],
+                age=arrow.get(result['created_at']).humanize(),
+                age_numeric=arrow.get(result['created_at']),
+            )
 
     def yield_github_results(self, url, auth):
         results = []
@@ -340,12 +343,7 @@ class Fedora(callbacks.Plugin):
                     "Non-200 status code %r; %r; %r" % (
                         response.status_code, link['next'], response.json))
 
-            if callable(response.json):
-                # Newer python-requests
-                results = response.json()
-            else:
-                # Older python-requests
-                results = response.json
+            results = response.json()
 
             for result in results:
                 yield result
@@ -360,6 +358,45 @@ class Fedora(callbacks.Plugin):
                         part.split('; ')[0][1:-1],
                     ) for part in field.split(', ')
                 ])
+
+    def yield_pagure_repos(self, tag):
+        self.log.info("Finding pagure repos for %r" % tag)
+        tmpl = "https://pagure.io/api/0/projects?tags={tag}"
+        url = tmpl.format(tag=tag)
+        for result in self.yield_pagure_results(url, 'projects'):
+            yield result['name']
+
+    def yield_pagure_pulls(self, tag, repo):
+        self.log.info("Finding pagure pull requests for %r %r" % (tag, repo))
+        tmpl = "https://pagure.io/api/0/{repo}/pull-requests"
+        url = tmpl.format(tag=tag, repo=repo)
+        for result in self.yield_pagure_results(url, 'requests'):
+            yield dict(
+                user=result['user']['name'],
+                title=result['title'],
+                url='https://pagure.io/{repo}/pull-request/{id}'.format(
+                    repo=result['project']['name'], id=result['id']),
+                age=arrow.get(result['date_created']).humanize(),
+                age_numeric=arrow.get(result['date_created']),
+            )
+
+    def yield_pagure_results(self, url, key):
+        response = requests.get(url)
+
+        if response.status_code == 404:
+            raise IOError("404 for %r" % url)
+
+        # And.. if we didn't get good results, just bail.
+        if response.status_code != 200:
+            raise IOError(
+                "Non-200 status code %r; %r; %r" % (
+                    response.status_code, url, response.text))
+
+        results = response.json()
+        results = results[key]
+
+        for result in results:
+            yield result
 
     def whoowns(self, irc, msg, args, package):
         """<package>
