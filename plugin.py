@@ -176,9 +176,6 @@ class Fedora(callbacks.Plugin):
 
         self.github_oauth_token = self.registryValue('github.oauth_token')
 
-        self.karma_db_path = self.registryValue('karma.db_path')
-        self.allow_unaddressed_karma = self.registryValue('karma.unaddressed')
-        self.allow_negative = self.registryValue('karma.allow_negative')
         self.karma_tokens = ('++', '--') if self.allow_negative else ('++',)
 
         # fetch necessary caches
@@ -231,6 +228,18 @@ class Fedora(callbacks.Plugin):
         self._refresh()
         irc.replySuccess()
     refresh = wrap(refresh)
+
+    @property
+    def karma_db_path(self):
+        return self.registryValue('karma.db_path')
+
+    @property
+    def allow_unaddressed_karma(self):
+        return self.registryValue('karma.unaddressed')
+
+    @property
+    def allow_negative(self):
+        return self.registryValue('karma.allow_negative')
 
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
