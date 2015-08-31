@@ -29,6 +29,7 @@
 ###
 
 import arrow
+import copy
 import sgmllib
 import shelve
 import htmlentitydefs
@@ -176,9 +177,6 @@ class Fedora(callbacks.Plugin):
 
         self.github_oauth_token = self.registryValue('github.oauth_token')
 
-        self.karma_db_path = self.registryValue('karma.db_path')
-        self.allow_unaddressed_karma = self.registryValue('karma.unaddressed')
-        self.allow_negative = self.registryValue('karma.allow_negative')
         self.karma_tokens = ('++', '--') if self.allow_negative else ('++',)
 
         # fetch necessary caches
@@ -232,6 +230,18 @@ class Fedora(callbacks.Plugin):
         irc.replySuccess()
     refresh = wrap(refresh)
 
+    @property
+    def karma_db_path(self):
+        return self.registryValue('karma.db_path')
+
+    @property
+    def allow_unaddressed_karma(self):
+        return self.registryValue('karma.unaddressed')
+
+    @property
+    def allow_negative(self):
+        return self.registryValue('karma.allow_negative')
+
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
@@ -242,56 +252,53 @@ class Fedora(callbacks.Plugin):
     def pulls(self, irc, msg, args, slug):
         """<username[/repo]>
 
-        List the latest pending pull requests on github repos.
+        List the latest pending pull requests on github/pagure repos.
         """
 
-        if not slug.strip():
-            irc.reply('Must be GitHub repo of the format '
-                      '<username/repo> or just <username>')
-        elif slug.count('/') == 0:
-            username, repo = slug.strip(), None
-        elif slug.count('/') == 1:
-            username, repo = slug.strip().split('/')
-        else:
-            irc.reply('Must be GitHub repo of the format '
-                      '<username/repo> or just <username>')
+        slug = slug.strip()
+        if not slug or slug.count('/') != 0:
+            irc.reply('Must be a GitHub org/username or pagure tag')
             return
 
-        if repo:
-            repos = [repo]
-        else:
-            irc.reply('One moment, please...  Looking up %s.' % username)
-            try:
-                repos = list(self.yield_github_repos(username))
-            except IOError as e:
-                irc.reply('Could not find %s' % username)
-                self.log.exception(e.message)
-                return
+        irc.reply('One moment, please...  Looking up %s.' % slug)
+        fail_on_github, fail_on_pagure = False, False
+        github_repos, pagure_repos = [], []
+        try:
+            github_repos = list(self.yield_github_repos(slug))
+        except IOError as e:
+            self.log.exception(e.message)
+            fail_on_github = True
 
         try:
-            results = sum([
-                list(self.yield_github_pulls(username, r)) for r in repos
-            ], [])
+            pagure_repos = list(self.yield_pagure_repos(slug))
         except IOError as e:
-            irc.reply('Could not find %s' % slug.strip())
             self.log.exception(e.message)
+            fail_on_pagure = True
+
+        if fail_on_github and fail_on_pagure:
+            irc.reply('Could not find %s on GitHub or pagure.io' % slug)
             return
 
+        results = sum([
+            list(self.yield_github_pulls(slug, r)) for r in github_repos
+        ], []) + sum([
+            list(self.yield_pagure_pulls(slug, r)) for r in pagure_repos
+        ], [])
+
         # Reverse-sort by time (newest-first)
-        def comparator(a, b):
-            return cmp(arrow.get(b['created_at']), arrow.get(a['created_at']))
+        comparator = lambda a, b: cmp(b['age_numeric'], a['age_numeric'])
         results.sort(comparator)
 
         if not results:
             irc.reply('No pending pull requests on {slug}'.format(slug=slug))
         else:
-            n = 4
+            n = 6  # Show 6 pull requests
             for pull in results[:n]:
                 irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
-                    user=pull['user']['login'],
+                    user=pull['user'],
                     title=pull['title'],
-                    url=pull['html_url'],
-                    age=arrow.get(pull['created_at']).humanize(),
+                    url=pull['url'],
+                    age=pull['age'],
                 ))
 
             if len(results) > n:
@@ -313,7 +320,13 @@ class Fedora(callbacks.Plugin):
         url = tmpl.format(username=username, repo=repo)
         auth = dict(access_token=self.github_oauth_token)
         for result in self.yield_github_results(url, auth):
-            yield result
+            yield dict(
+                user=result['user']['login'],
+                title=result['title'],
+                url=result['html_url'],
+                age=arrow.get(result['created_at']).humanize(),
+                age_numeric=arrow.get(result['created_at']),
+            )
 
     def yield_github_results(self, url, auth):
         results = []
@@ -330,12 +343,7 @@ class Fedora(callbacks.Plugin):
                     "Non-200 status code %r; %r; %r" % (
                         response.status_code, link['next'], response.json))
 
-            if callable(response.json):
-                # Newer python-requests
-                results = response.json()
-            else:
-                # Older python-requests
-                results = response.json
+            results = response.json()
 
             for result in results:
                 yield result
@@ -350,6 +358,45 @@ class Fedora(callbacks.Plugin):
                         part.split('; ')[0][1:-1],
                     ) for part in field.split(', ')
                 ])
+
+    def yield_pagure_repos(self, tag):
+        self.log.info("Finding pagure repos for %r" % tag)
+        tmpl = "https://pagure.io/api/0/projects?tags={tag}"
+        url = tmpl.format(tag=tag)
+        for result in self.yield_pagure_results(url, 'projects'):
+            yield result['name']
+
+    def yield_pagure_pulls(self, tag, repo):
+        self.log.info("Finding pagure pull requests for %r %r" % (tag, repo))
+        tmpl = "https://pagure.io/api/0/{repo}/pull-requests"
+        url = tmpl.format(tag=tag, repo=repo)
+        for result in self.yield_pagure_results(url, 'requests'):
+            yield dict(
+                user=result['user']['name'],
+                title=result['title'],
+                url='https://pagure.io/{repo}/pull-request/{id}'.format(
+                    repo=result['project']['name'], id=result['id']),
+                age=arrow.get(result['date_created']).humanize(),
+                age_numeric=arrow.get(result['date_created']),
+            )
+
+    def yield_pagure_results(self, url, key):
+        response = requests.get(url)
+
+        if response.status_code == 404:
+            raise IOError("404 for %r" % url)
+
+        # And.. if we didn't get good results, just bail.
+        if response.status_code != 200:
+            raise IOError(
+                "Non-200 status code %r; %r; %r" % (
+                    response.status_code, url, response.text))
+
+        results = response.json()
+        results = results[key]
+
+        for result in results:
+            yield result
 
     def whoowns(self, irc, msg, args, package):
         """<package>
@@ -691,14 +738,46 @@ class Fedora(callbacks.Plugin):
                 admonition = self.registryValue('naked_ping_admonition')
                 irc.reply(admonition)
 
+    def get_current_release(self):
+        url = 'https://admin.fedoraproject.org/pkgdb/api/collections/'
+        query = {
+            'clt_status': 'Active',
+            'pattern': 'f*',
+        }
+        response = requests.get(url, params=query)
+        data = response.json()
+        collections = data['collections']
+        collections.sort(key=lambda c: int(c['version']))
+        return collections[-1]['branchname'].encode('utf-8')
+
+    def open_karma_db(self):
+        data = shelve.open(self.karma_db_path)
+        if 'backwards' in data:
+            # This is the old style data.  convert it to the new form.
+            release = self.get_current_release()
+            data['forwards-' + release] = copy.copy(data['forwards'])
+            data['backwards-' + release] = copy.copy(data['backwards'])
+            del data['forwards']
+            del data['backwards']
+            data.sync()
+        return data
+
     def karma(self, irc, msg, args, name):
         """<username>
 
         Return the total karma for a FAS user."""
         data = None
         try:
-            data = shelve.open(self.karma_db_path)
-            votes = data['backwards'].get(name, {})
+            data = self.open_karma_db()
+            if name in self.nickmap:
+                name = self.nickmap[name]
+            release = self.get_current_release()
+            votes = data['backwards-' + release].get(name, {})
+            alltime = []
+            for key in data:
+                if 'backwards-' not in key:
+                    continue
+                alltime.append(data[key].get(name, {}))
         finally:
             if data:
                 data.close()
@@ -706,12 +785,18 @@ class Fedora(callbacks.Plugin):
         inc = len([v for v in votes.values() if v == 1])
         dec = len([v for v in votes.values() if v == -1])
         total = inc - dec
-        if inc or dec:
-            irc.reply("Karma for %s has been increased %i times and "
-                      "decreased %i times for a total of %i" % (
-                        name, inc, dec, total))
-        else:
-            irc.reply("I have no karma data for %s" % name)
+
+        inc, dec = 0, 0
+        for release in alltime:
+            inc += len([v for v in release.values() if v == 1])
+            dec += len([v for v in release.values() if v == -1])
+        alltime_total = inc - dec
+
+        irc.reply("Karma for %s has been increased %i times and "
+                    "decreased %i times this release cycle for a "
+                    "total of %i (%i all time)" % (
+                    name, inc, dec, total, alltime_total))
+
 
     karma = wrap(karma, ['text'])
 
@@ -722,6 +807,10 @@ class Fedora(callbacks.Plugin):
 
         # Extract 'puiterwijk' out of 'have a cookie puiterwijk++'
         recip = recip.strip().split()[-1]
+
+        # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
+        if str(recip).lower() in ['c','g','i']:
+            return
 
         increment = direction == '++' # If not, then it must be decrement
 
@@ -751,42 +840,55 @@ class Fedora(callbacks.Plugin):
             irc.reply("You may not modify your own karma.")
             return
 
+        release = self.get_current_release()
+
         # Check our karma db to make sure this hasn't already been done.
         data = None
         try:
             data = shelve.open(self.karma_db_path)
-            if 'forwards' not in data or 'backwards' not in data:
-                data['forwards'], data['backwards'] = {}, {}
+            fkey = 'forwards-' + release
+            bkey = 'backwards-' + release
+            if fkey not in data:
+                data[fkey] = {}
 
-            if agent not in data['forwards']:
-                forwards = data['forwards']
+            if bkey not in data:
+                data[bkey] = {}
+
+            if agent not in data[fkey]:
+                forwards = data[fkey]
                 forwards[agent] = {}
-                data['forwards'] = forwards
+                data[fkey] = forwards
 
-            if recip not in data['backwards']:
-                backwards = data['backwards']
+            if recip not in data[bkey]:
+                backwards = data[bkey]
                 backwards[recip] = {}
-                data['backwards'] = backwards
+                data[bkey] = backwards
 
             vote = 1 if increment else -1
 
-            if data['forwards'][agent].get(recip) == vote:
+            if data[fkey][agent].get(recip) == vote:
                 ## People found this response annoying.
                 ## https://github.com/fedora-infra/supybot-fedora/issues/25
                 #irc.reply(
                 #    "You have already given %i karma to %s" % (vote, recip))
                 return
 
-            forwards = data['forwards']
+            forwards = data[fkey]
             forwards[agent][recip] = vote
-            data['forwards'] = forwards
+            data[fkey] = forwards
 
-            backwards = data['backwards']
+            backwards = data[bkey]
             backwards[recip][agent] = vote
-            data['backwards'] = backwards
+            data[bkey] = backwards
 
             # Count the number of karmas for old so-and-so.
-            total = sum(data['backwards'][recip].values())
+            total_this_release = sum(data[bkey][recip].values())
+
+            total_all_time = 0
+            for key in data:
+                if 'backwards-' not in key:
+                    continue
+                total_all_time += sum(data[key].get(recip, {}).values())
         finally:
             if data:
                 data.close()
@@ -797,15 +899,20 @@ class Fedora(callbacks.Plugin):
             msg={
                 'agent': agent,
                 'recipient': recip,
-                'total': total,
+                'total': total_all_time,  # The badge rules use this value
+                'total_this_release': total_this_release,
                 'vote': vote,
                 'channel': channel,
                 'line': line,
+                'release': release,
             },
         )
 
         url = self.registryValue('karma.url')
-        irc.reply('Karma for %s changed to %r:  %s' % (recip, total, url))
+        irc.reply(
+            'Karma for %s changed to %r '
+            '(for the %s release cycle):  %s' % (
+                recip, total_this_release, release, url))
 
 
     def wikilink(self, irc, msg, args, name):
@@ -830,14 +937,14 @@ class Fedora(callbacks.Plugin):
 
         Return MirrorManager list of FAS usernames which administer <hostname>.
         <hostname> must be the FQDN of the host."""
-        url = ("https://admin.fedoraproject.org/mirrormanager/mirroradmins?"
-               "tg_format=json&host=" + hostname)
-        result = self._load_json(url)['values']
-        if len(result) == 0:
-            irc.reply('Hostname "%s" not found' % hostname)
+        url = ("https://admin.fedoraproject.org/mirrormanager/api/"
+               "mirroradmins?name=" + hostname)
+        result = self._load_json(url)
+        if not 'admins' in result:
+            irc.reply(result.get('message', 'Something went wrong'))
             return
         string = 'Mirror Admins of %s: ' % hostname
-        string += ' '.join(result)
+        string += ' '.join(result['admins'])
         irc.reply(string.encode('utf-8'))
     mirroradmins = wrap(mirroradmins, ['text'])
 
