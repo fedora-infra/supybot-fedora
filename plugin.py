@@ -507,6 +507,34 @@ class Fedora(callbacks.Plugin):
                    person).encode('utf-8'))
     himynameis = wrap(himynameis, ['text'])
 
+    def dctime(self, irc, msg, args, dcname):
+        """<dcname>
+
+        Returns the current time of the datacenter identified by dcname.
+        Supported DCs: PHX2, RDU, AMS, osuosl, ibiblio."""
+        timezone_name = ''
+        dcname_lower = dcname.lower()
+        if dcname_lower == 'phx2':
+            timezone_name = 'US/Arizona'
+        elif dcname_lower in ['rdu', 'ibiblio']:
+            timezone_name = 'US/Eastern'
+        elif dcname_lower == 'osuosl':
+            timezone_name = 'US/Pacific'
+        elif dcname_lower in ['ams', 'internetx']:
+            timezone_name = 'Europe/Amsterdam'
+        else:
+            irc.reply('Datacenter %s is unknown' % dcname)
+            return
+        try:
+            time = datetime.datetime.now(pytz.timezone(timezone_name))
+        except:
+            irc.reply('The timezone of "%s" was unknown: "%s"' % (
+                dcname, timezone_name))
+            return
+        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
+                  (dcname, time.strftime('%H:%M'), timezone_name))
+    dctime = wrap(dctime, ['text'])
+
     def localtime(self, irc, msg, args, name):
         """<username>
 
