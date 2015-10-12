@@ -294,12 +294,12 @@ class Fedora(callbacks.Plugin):
         else:
             n = 6  # Show 6 pull requests
             for pull in results[:n]:
-                irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
+                irc.reply(u'@{user}\'s "{title}" {url} filed {age}'.format(
                     user=pull['user'],
                     title=pull['title'],
                     url=pull['url'],
                     age=pull['age'],
-                ))
+                ).encode('utf-8'))
 
             if len(results) > n:
                 irc.reply('... and %i more.' % (len(results) - n))
