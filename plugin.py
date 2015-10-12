@@ -294,12 +294,12 @@ class Fedora(callbacks.Plugin):
         else:
             n = 6  # Show 6 pull requests
             for pull in results[:n]:
-                irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
+                irc.reply(u'@{user}\'s "{title}" {url} filed {age}'.format(
                     user=pull['user'],
                     title=pull['title'],
                     url=pull['url'],
                     age=pull['age'],
-                ))
+                ).encode('utf-8'))
 
             if len(results) > n:
                 irc.reply('... and %i more.' % (len(results) - n))
@@ -506,6 +506,34 @@ class Fedora(callbacks.Plugin):
         irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
                    person).encode('utf-8'))
     himynameis = wrap(himynameis, ['text'])
+
+    def dctime(self, irc, msg, args, dcname):
+        """<dcname>
+
+        Returns the current time of the datacenter identified by dcname.
+        Supported DCs: PHX2, RDU, AMS, osuosl, ibiblio."""
+        timezone_name = ''
+        dcname_lower = dcname.lower()
+        if dcname_lower == 'phx2':
+            timezone_name = 'US/Arizona'
+        elif dcname_lower in ['rdu', 'ibiblio']:
+            timezone_name = 'US/Eastern'
+        elif dcname_lower == 'osuosl':
+            timezone_name = 'US/Pacific'
+        elif dcname_lower in ['ams', 'internetx']:
+            timezone_name = 'Europe/Amsterdam'
+        else:
+            irc.reply('Datacenter %s is unknown' % dcname)
+            return
+        try:
+            time = datetime.datetime.now(pytz.timezone(timezone_name))
+        except:
+            irc.reply('The timezone of "%s" was unknown: "%s"' % (
+                dcname, timezone_name))
+            return
+        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
+                  (dcname, time.strftime('%H:%M'), timezone_name))
+    dctime = wrap(dctime, ['text'])
 
     def localtime(self, irc, msg, args, name):
         """<username>
