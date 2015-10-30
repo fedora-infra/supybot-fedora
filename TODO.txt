@@ -1,5 +1,3 @@
-- wiki [[Page name]] snarfer that prints back a link to the wiki (maybe even
-  check for redirects, too)
 - fix ext and fasinfo to report whether a Fedora Talk extension is enabled or
   disabled (not currently possible, the config setting is only readable by
   that user, not anybody)
