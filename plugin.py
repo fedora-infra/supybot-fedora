@@ -439,8 +439,18 @@ class Fedora(callbacks.Plugin):
             branch_list.append(listing['collection']['branchname'])
         branch_list.sort()
         irc.reply(' '.join(branch_list))
-        return
     branches = wrap(branches, ['text'])
+
+    def wiki(self, irc, msg, args, page_name):
+        """<wiki_page>
+
+        Return the Fedora wiki link for the specified page."""
+        link = "https://fedoraproject.org/wiki/{}".format(page_name)
+
+        # Properly format spaces for the wiki link.
+        link.replace(" ", "_")
+        irc.reply(link)
+    wiki = wrap(wiki, ['text'])
 
     def what(self, irc, msg, args, package):
         """<package>
