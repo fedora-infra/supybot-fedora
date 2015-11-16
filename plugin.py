@@ -939,8 +939,8 @@ class Fedora(callbacks.Plugin):
         url = self.registryValue('karma.url')
         irc.reply(
             'Karma for %s changed to %r '
-            '(for the %s release cycle):  %s' % (
-                recip, total_this_release, release, url))
+            '(for the current release cycle):  %s' % (
+                recip, total_this_release, url))
 
 
     def wikilink(self, irc, msg, args, name):
