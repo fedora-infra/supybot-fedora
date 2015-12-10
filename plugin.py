@@ -211,7 +211,8 @@ class Fedora(callbacks.Plugin):
                                       '', user['email'] or '')
             self.faslist[key] = value
             if user['ircnick']:
-                self.nickmap[user['ircnick']] = name
+                ircnick_lower = user['ircnick'].lower()
+                self.nickmap[ircnick_lower] = name
 
         self.log.info("Downloading package owners cache")
         data = requests.get(
@@ -844,10 +845,10 @@ class Fedora(callbacks.Plugin):
             return
 
         # Extract 'puiterwijk' out of 'have a cookie puiterwijk++'
-        recip = recip.strip().split()[-1]
+        recip = recip.strip().split()[-1].lower()
 
         # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
-        if str(recip).lower() in ['c','g','i']:
+        if str(recip) in ['c','g','i']:
             return
 
         increment = direction == '++' # If not, then it must be decrement
