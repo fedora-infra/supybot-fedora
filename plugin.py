@@ -550,6 +550,10 @@ class Fedora(callbacks.Plugin):
 
         Returns the current time of the user.
         The timezone is queried from FAS."""
+        if name in ['zod', 'zodbot']:
+            irc.reply('There is no time! Kneel before zod!')
+            return
+
         try:
             person = self.fasclient.person_by_username(name)
         except:
