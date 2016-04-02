@@ -828,11 +828,11 @@ class Fedora(callbacks.Plugin):
         dec = len([v for v in votes.values() if v == -1])
         total = inc - dec
 
-        inc, dec = 0, 0
+        alltime_inc = alltime_dec = 0
         for release in alltime:
-            inc += len([v for v in release.values() if v == 1])
-            dec += len([v for v in release.values() if v == -1])
-        alltime_total = inc - dec
+            alltime_inc += len([v for v in release.values() if v == 1])
+            alltime_dec += len([v for v in release.values() if v == -1])
+        alltime_total = alltime_inc - alltime_dec
 
         irc.reply("Karma for %s has been increased %i times and "
                     "decreased %i times this release cycle for a "
