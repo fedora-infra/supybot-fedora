@@ -564,7 +564,7 @@ class Fedora(callbacks.Plugin):
             return
         timezone_name = person['timezone']
         if timezone_name is None:
-            irc.reply('User "%s" doesn\'t share his timezone' % name)
+            irc.reply('User "%s" doesn\'t share their timezone' % name)
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
