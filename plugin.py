@@ -30,11 +30,10 @@
 
 import arrow
 import copy
-import sgmllib
 import shelve
-import htmlentitydefs
 import requests
 import time
+import sys
 
 # Use re2 if present.  It is faster.
 try:
@@ -65,6 +64,11 @@ import threading
 
 from itertools import chain, islice, tee
 from operator import itemgetter
+
+if sys.version_info[0] >= 3:
+    from html.entities import entitydefs
+else:
+    from htmlentitydefs import entitydefs
 
 SPARKLINE_RESOLUTION = 50
 
@@ -123,32 +127,33 @@ class ThreadPool(object):
         return [thread.result for thread in threads]
 
 
-class Title(sgmllib.SGMLParser):
-    entitydefs = htmlentitydefs.entitydefs.copy()
+class Title(utils.web.HtmlToText):
+    entitydefs = entitydefs.copy()
     entitydefs['nbsp'] = ' '
-
     def __init__(self):
         self.inTitle = False
-        self.title = ''
-        sgmllib.SGMLParser.__init__(self)
+        self.inSvg = False
+        utils.web.HtmlToText.__init__(self)
 
-    def start_title(self, attrs):
-        self.inTitle = True
+    @property
+    def inHtmlTitle(self):
+        return self.inTitle and not self.inSvg
 
-    def end_title(self):
-        self.inTitle = False
+    def handle_starttag(self, tag, attrs):
+        if tag == 'title':
+            self.inTitle = True
+        elif tag == 'svg':
+            self.inSvg = True
 
-    def unknown_entityref(self, name):
-        if self.inTitle:
-            self.title += ' '
+    def handle_endtag(self, tag):
+        if tag == 'title':
+            self.inTitle = False
+        elif tag == 'svg':
+            self.inSvg = False
 
-    def unknown_charref(self, name):
-        if self.inTitle:
-            self.title += ' '
-
-    def handle_data(self, data):
-        if self.inTitle:
-            self.title += data
+    def append(self, data):
+        if self.inHtmlTitle:
+            super(Title, self).append(data)
 
 
 class Fedora(callbacks.Plugin):

@@ -3,3 +3,6 @@ supybot
 requests
 arrow
 packagedb-cli
+fedmsg
+cryptography
+simplejson
