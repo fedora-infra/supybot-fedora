@@ -245,8 +245,10 @@ class Fedora(callbacks.Plugin):
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
-        json = simplejson.loads(utils.web.getUrl(url))
-        socket.setdefaulttimeout(timeout)
+        try:
+            json = simplejson.loads(utils.web.getUrl(url))
+        finally:
+            socket.setdefaulttimeout(timeout)
         return json
 
     def pulls(self, irc, msg, args, slug):
