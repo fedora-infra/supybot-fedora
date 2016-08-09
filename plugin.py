@@ -45,6 +45,7 @@ except ImportError:
 import supybot.utils as utils
 import supybot.conf as conf
 import supybot.callbacks as callbacks
+import supybot.world as world
 from supybot.commands import wrap
 
 from fedora.client import AppError
@@ -61,7 +62,6 @@ import urllib
 import socket
 import pytz
 import datetime
-import threading
 
 from itertools import chain, islice, tee
 from operator import itemgetter
@@ -90,7 +90,7 @@ def datagrepper_query(kwargs):
     return result
 
 
-class WorkerThread(threading.Thread):
+class WorkerThread(world.SupyThread):
     """ A simple worker thread for our threadpool. """
 
     def __init__(self, fn, item, *args, **kwargs):
