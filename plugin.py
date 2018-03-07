@@ -760,6 +760,10 @@ class Fedora(callbacks.Plugin):
         if (msg.addressed or msg.repliedTo):
             return
 
+        # Ignore our own messages
+        if msg.nick in ['zod', 'zodbot']:
+            return
+
         channel = msg.args[0]
         if irc.isChannel(channel) and self.allow_unaddressed_karma:
             irc = callbacks.SimpleProxy(irc, msg)
@@ -881,7 +885,13 @@ class Fedora(callbacks.Plugin):
             recip = self.nickmap[recip]
 
         if agent == recip:
-            irc.reply("You may not modify your own karma.")
+            if increment:
+                irc.reply("%s--" % agent)
+                irc.reply("You may not modify your own karma.")
+            else:
+                irc.reply("You may not modify your own karma.")
+                irc.reply("But you will be allowed to live.")
+                irc.reply("%s++" % agent)
             return
 
         release = self.get_current_release()
