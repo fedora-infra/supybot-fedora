@@ -3,3 +3,7 @@ supybot
 requests
 arrow
 packagedb-cli
+pyyaml
+fedmsg
+simplejson
+pytz
