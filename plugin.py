@@ -784,9 +784,9 @@ class Fedora(callbacks.Plugin):
               '&ordering=version'
         response = requests.get(url)
         data = response.json()
-        return str(max(map(lambda x: int(x['version']),
-                           filter(lambda x: x['version'] != 'Rawhide',
-                                  data['results']))))
+        return str(max([int(x['version'])
+                        for x in data['results']
+                        if x['version'] != 'Rawhide']))
 
     def open_karma_db(self):
         data = shelve.open(self.karma_db_path)
