@@ -45,11 +45,12 @@ except ImportError:
 import supybot.utils as utils
 import supybot.conf as conf
 import supybot.callbacks as callbacks
+import supybot.ircutils as ircutils
+import supybot.world as world
 from supybot.commands import wrap
 
 from fedora.client import AppError
 from fedora.client.fas2 import AccountSystem
-from pkgdb2client import PkgDB
 
 from kitchen.text.converters import to_unicode
 
@@ -61,7 +62,7 @@ import urllib
 import socket
 import pytz
 import datetime
-import threading
+import yaml
 
 from itertools import chain, islice, tee
 from operator import itemgetter
@@ -90,7 +91,7 @@ def datagrepper_query(kwargs):
     return result
 
 
-class WorkerThread(threading.Thread):
+class WorkerThread(world.SupyThread):
     """ A simple worker thread for our threadpool. """
 
     def __init__(self, fn, item, *args, **kwargs):
@@ -161,7 +162,6 @@ class Fedora(callbacks.Plugin):
         # caches, automatically downloaded on __init__, manually refreshed on
         # .refresh
         self.userlist = None
-        self.bugzacl = None
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
@@ -171,7 +171,6 @@ class Fedora(callbacks.Plugin):
 
         self.fasclient = AccountSystem(self.fasurl, username=self.username,
                                        password=self.password)
-        self.pkgdb = PkgDB()
         # URLs
         # self.url = {}
 
@@ -213,11 +212,6 @@ class Fedora(callbacks.Plugin):
             if user['ircnick']:
                 self.nickmap[user['ircnick']] = name
 
-        self.log.info("Downloading package owners cache")
-        data = requests.get(
-            'https://admin.fedoraproject.org/pkgdb/api/bugzilla?format=json',
-            verify=True).json()
-        self.bugzacl = data['bugzillaAcls']
         socket.setdefaulttimeout(timeout)
 
     def refresh(self, irc, msg, args):
@@ -245,8 +239,10 @@ class Fedora(callbacks.Plugin):
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(45)
-        json = simplejson.loads(utils.web.getUrl(url))
-        socket.setdefaulttimeout(timeout)
+        try:
+            json = simplejson.loads(utils.web.getUrl(url))
+        finally:
+            socket.setdefaulttimeout(timeout)
         return json
 
     def pulls(self, irc, msg, args, slug):
@@ -403,56 +399,68 @@ class Fedora(callbacks.Plugin):
 
         Retrieve the owner of a given package
         """
-        try:
-            mainowner = self.bugzacl['Fedora'][package]['owner']
-        except KeyError:
-            irc.reply("No such package exists.")
+        # First use pagure info
+        url = 'https://src.fedoraproject.org/api/0/rpms/'
+        req = requests.get(url + package)
+        if req.status_code == 404:
+            irc.reply('Package %s not found.' % package)
             return
-        others = []
-        for key in self.bugzacl:
-            if key == 'Fedora':
-                continue
+
+        req_json = req.json()
+        admins = ', '.join(req_json['access_users']['admin'])
+        owners = ', '.join(req_json['access_users']['owner'])
+        committers = ', '.join(req_json['access_users']['commit'])
+
+        if owners:
+            owners = ircutils.bold('owner: ') + owners
+        if admins:
+            admins = ircutils.bold('admin: ') + admins
+        if committers:
+            committers = ircutils.bold('commit: ') + committers
+
+        resp = '; '.join(
+            filter(lambda x: x != '', [owners, admins, committers]))
+
+        # Then try using fedora-scm-requests for more info
+        url = 'https://pagure.io/releng/fedora-scm-requests/raw/master/f/rpms/'
+        req = requests.get(url + package)
+        if req.status_code == 200:
             try:
-                owner = self.bugzacl[key][package]['owner']
-                if owner == mainowner:
-                    continue
-            except KeyError:
-                continue
-            others.append("%s in %s" % (owner, key))
-        if others == []:
-            irc.reply(mainowner)
-        else:
-            irc.reply("%s (%s)" % (mainowner, ', '.join(others)))
+                yml = yaml.load(req.text)
+                if 'bugzilla_contact' in yml:
+                    lines = []
+                    for k, v in yml['bugzilla_contact'].iteritems():
+                        lines += '%s: %s' % (ircutils.bold(k), v)
+                    resp += ' - ' + '; '.join(lines)
+            except yaml.scanner.ScannerError:
+                # If we can't parse the YAML for some reason, don't worry about
+                # it. Just return the initial response.
+                pass
+        irc.reply(resp)
     whoowns = wrap(whoowns, ['text'])
 
-    def branches(self, irc, msg, args, package):
-        """<package>
+    def wiki(self, irc, msg, args, page_name):
+        """<wiki_page>
 
-        Return the branches a package is in."""
-        try:
-            pkginfo = self.pkgdb.get_package(package)
-        except AppError:
-            irc.reply("No such package exists.")
-            return
-        branch_list = []
-        for listing in pkginfo['packages']:
-            branch_list.append(listing['collection']['branchname'])
-        branch_list.sort()
-        irc.reply(' '.join(branch_list))
-        return
-    branches = wrap(branches, ['text'])
+        Return the Fedora wiki link for the specified page."""
+        link = "https://fedoraproject.org/wiki/{}".format(page_name)
+
+        # Properly format spaces for the wiki link.
+        link.replace(" ", "_")
+        irc.reply(link)
+    wiki = wrap(wiki, ['text'])
 
     def what(self, irc, msg, args, package):
         """<package>
 
         Returns a description of a given package.
         """
-        try:
-            summary = self.bugzacl['Fedora'][package]['summary']
-            irc.reply("%s: %s" % (package, summary))
-        except KeyError:
-            irc.reply("No such package exists.")
-            return
+        url = 'https://apps.fedoraproject.org/mdapi/rawhide/srcpkg/'
+        req = requests.get(url + package)
+        if req.status_code == 404:
+            irc.reply('No such package exists.')
+        else:
+            irc.reply('%s: %s' % (package, req.json()['summary']))
     what = wrap(what, ['text'])
 
     def fas(self, irc, msg, args, find_name):
@@ -540,6 +548,10 @@ class Fedora(callbacks.Plugin):
 
         Returns the current time of the user.
         The timezone is queried from FAS."""
+        if name in ['zod', 'zodbot']:
+            irc.reply('There is no time! Kneel before zod!')
+            return
+
         try:
             person = self.fasclient.person_by_username(name)
         except:
@@ -550,7 +562,7 @@ class Fedora(callbacks.Plugin):
             return
         timezone_name = person['timezone']
         if timezone_name is None:
-            irc.reply('User "%s" doesn\'t share his timezone' % name)
+            irc.reply('User "%s" doesn\'t share their timezone' % name)
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
@@ -767,16 +779,14 @@ class Fedora(callbacks.Plugin):
                 irc.reply(admonition)
 
     def get_current_release(self):
-        url = 'https://admin.fedoraproject.org/pkgdb/api/collections/'
-        query = {
-            'clt_status': 'Active',
-            'pattern': 'f*',
-        }
-        response = requests.get(url, params=query)
+        url = 'https://pdc.fedoraproject.org/rest_api/v1/releases/'\
+              '?active=true&name=Fedora&release_type=ga&fields=version'\
+              '&ordering=version'
+        response = requests.get(url)
         data = response.json()
-        collections = data['collections']
-        collections.sort(key=lambda c: int(c['version']))
-        return collections[-1]['branchname'].encode('utf-8')
+        return str(max([int(x['version'])
+                        for x in data['results']
+                        if x['version'] != 'Rawhide']))
 
     def open_karma_db(self):
         data = shelve.open(self.karma_db_path)
@@ -814,11 +824,11 @@ class Fedora(callbacks.Plugin):
         dec = len([v for v in votes.values() if v == -1])
         total = inc - dec
 
-        inc, dec = 0, 0
+        alltime_inc = alltime_dec = 0
         for release in alltime:
-            inc += len([v for v in release.values() if v == 1])
-            dec += len([v for v in release.values() if v == -1])
-        alltime_total = inc - dec
+            alltime_inc += len([v for v in release.values() if v == 1])
+            alltime_dec += len([v for v in release.values() if v == -1])
+        alltime_total = alltime_inc - alltime_dec
 
         irc.reply("Karma for %s has been increased %i times and "
                     "decreased %i times this release cycle for a "
@@ -939,8 +949,8 @@ class Fedora(callbacks.Plugin):
         url = self.registryValue('karma.url')
         irc.reply(
             'Karma for %s changed to %r '
-            '(for the %s release cycle):  %s' % (
-                recip, total_this_release, release, url))
+            '(for the current release cycle):  %s' % (
+                recip, total_this_release, url))
 
 
     def wikilink(self, irc, msg, args, name):
