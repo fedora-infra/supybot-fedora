@@ -430,7 +430,7 @@ class Fedora(callbacks.Plugin):
                 if 'bugzilla_contact' in yml:
                     lines = []
                     for k, v in yml['bugzilla_contact'].iteritems():
-                        lines += '%s: %s' % (ircutils.bold(k), v)
+                        lines.append('%s: %s' % (ircutils.bold(k), v))
                     resp += ' - ' + '; '.join(lines)
             except yaml.scanner.ScannerError:
                 # If we can't parse the YAML for some reason, don't worry about
