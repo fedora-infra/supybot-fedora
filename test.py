@@ -27,12 +27,13 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
-from supybot.test import *
-
+from supybot import world
+from supybot.test import PluginTestCase
 
 class FedoraTestCase(PluginTestCase):
     plugins = ('Fedora', )
 
     def testRandom(self):
         self.assertNotError('random')
+
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
