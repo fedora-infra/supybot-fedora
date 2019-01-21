@@ -3,3 +3,6 @@
 *.pyo
 *.swp
 dist
+.tox
+conf
+logs
