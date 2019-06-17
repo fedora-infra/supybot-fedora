@@ -493,7 +493,7 @@ class Fedora(callbacks.Plugin):
             irc.reply('Something blew up, please try again')
             return
         if not person:
-            irc.reply('Sorry, but you don\'t exist')
+            irc.reply('FAS Account not found.')
             return
         irc.reply(('%(username)s \'%(human_name)s\' <%(email)s>' %
                    person).encode('utf-8'))
@@ -509,7 +509,7 @@ class Fedora(callbacks.Plugin):
             irc.reply('Something blew up, please try again')
             return
         if not person:
-            irc.reply('Sorry, but you don\'t exist')
+            irc.reply('FAS Account not found.')
             return
         irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
                    person).encode('utf-8'))
