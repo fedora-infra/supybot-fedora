@@ -7,3 +7,4 @@ pyyaml
 fedmsg
 simplejson
 pytz
+fasjson-client
