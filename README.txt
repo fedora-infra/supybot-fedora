@@ -10,3 +10,32 @@ TO INSTALL:
      config plugins.fedora.fas.password [password]
    (This information can only be accessed by bot owners.)
 5) @reload Fedora
+
+# Vagrant
+
+First, create the vagrant setup with `vagrant up`
+
+Once completed, you will be able to connect from your host to the IRC server
+now running the the Vagrant guest VM, at "irc.supybot.test"
+
+Next, ssh into the vagrant guest with `vagrant ssh`, and start the supybot 
+with `supybot /home/vagrant/supybot-fedora/supybot-fedora.conf`
+
+Then, in your IRC client, set your nick to "vagrant"
+`/nick vagrant`
+
+Then identify to supybot as vagrant, (the password is 'password')
+`/msg supybot identify vagrant password`
+
+First, load the plugin with:
+`/msg supybot load Fedora`
+Note that it will instantly fail due to the lack of FAS credentials
+
+Next, set your FAS credentials in the plugin's config with:
+`/msg supybot config plugins.fedora.fas.username [username]`
+`/msg supybot config plugins.fedora.fas.password [password]`
+
+Then load the plugin again with:
+`/msg supybot load Fedora`
+
+

@@ -1,0 +1,39 @@
+---
+- name: Install RPM packages
+  dnf:
+      name: ['limnoria', 'ngircd', 'weechat']
+      state: present
+
+- name: set ngircd config
+  copy:
+      src: ngircd.conf
+      dest: /etc/ngircd.conf
+
+- name: Start ngircd service using systemd
+  systemd:
+    state: started
+    name: ngircd
+    daemon_reload: yes
+    enabled: yes
+
+- name: Install supybot-fedora requirements
+  pip:
+    requirements: "requirements.txt"
+  args:
+    chdir: /vagrant/
+
+- name: copy supybot basic config
+  copy:
+      src: supybot-fedora
+      dest: /home/vagrant
+      owner: vagrant
+      group: vagrant
+
+- name: Create a symbolic link
+  file:
+    src: /vagrant/
+    dest: /home/vagrant/supybot-fedora/plugins/Fedora
+    state: link
+    owner: vagrant
+    group: vagrant
+
