@@ -58,18 +58,24 @@ from kitchen.text.converters import to_unicode
 # import fedmsg.meta
 
 import simplejson
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 import socket
 import pytz
 import datetime
 import yaml
 
-from itertools import chain, islice, tee
+from itertools import chain
 from operator import itemgetter
 
 SPARKLINE_RESOLUTION = 50
 
 datagrepper_url = "https://apps.fedoraproject.org/datagrepper/raw"
+
+
+def cmp(a, b):
+    return (a > b) - (a < b)
 
 
 def datagrepper_query(kwargs):
@@ -297,7 +303,7 @@ class Fedora(callbacks.Plugin):
         ) + sum([list(self.yield_pagure_pulls(slug, r)) for r in pagure_repos], [])
 
         # Reverse-sort by time (newest-first)
-        comparator = lambda a, b: cmp(b["age_numeric"], a["age_numeric"])
+        comparator = lambda a, b: cmp(b["age_numeric"], a["age_numeric"])  # noqa: E731
         results.sort(comparator)
 
         if not results:
@@ -512,7 +518,7 @@ class Fedora(callbacks.Plugin):
         for things like meeting roll call and calling attention to yourself."""
         try:
             person = self.fasclient.person_by_username(name)
-        except:
+        except Exception:
             irc.reply("Something blew up, please try again")
             return
         if not person:
@@ -530,7 +536,7 @@ class Fedora(callbacks.Plugin):
         Will the real Slim Shady please stand up?"""
         try:
             person = self.fasclient.person_by_username(name)
-        except:
+        except Exception:
             irc.reply("Something blew up, please try again")
             return
         if not person:
@@ -560,7 +566,7 @@ class Fedora(callbacks.Plugin):
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
-        except:
+        except Exception:
             irc.reply(
                 'The timezone of "%s" was unknown: "%s"' % (dcname, timezone_name)
             )
@@ -583,7 +589,7 @@ class Fedora(callbacks.Plugin):
 
         try:
             person = self.fasclient.person_by_username(name)
-        except:
+        except Exception:
             irc.reply('Error getting info user user: "%s"' % name)
             return
         if not person:
@@ -595,7 +601,7 @@ class Fedora(callbacks.Plugin):
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
-        except:
+        except Exception:
             irc.reply('The timezone of "%s" was unknown: "%s"' % (name, timezone_name))
             return
         irc.reply(
@@ -611,7 +617,7 @@ class Fedora(callbacks.Plugin):
         Return information on a Fedora Account System username."""
         try:
             person = self.fasclient.person_by_username(name)
-        except:
+        except Exception:
             irc.reply('Error getting info for user: "%s"' % name)
             return
         if not person:
@@ -642,7 +648,7 @@ class Fedora(callbacks.Plugin):
             roles = self.fasclient.people_query(
                 constraints=constraints, columns=columns
             )
-        except:
+        except Exception:
             irc.reply("Error getting group memberships.")
             return
 
@@ -810,10 +816,10 @@ class Fedora(callbacks.Plugin):
                     self._do_karma(irc, channel, agent, word, line, explicit=False)
 
         blacklist = self.registryValue("naked_ping_channel_blacklist")
-        if irc.isChannel(channel) and not channel in blacklist:
+        if irc.isChannel(channel) and channel not in blacklist:
             # Also, handle naked pings for
             # https://github.com/fedora-infra/supybot-fedora/issues/26
-            pattern = "\w* ?[:,] ?ping\W*$"
+            pattern = r"\w* ?[:,] ?ping\W*$"
             if re.match(pattern, line):
                 admonition = self.registryValue("naked_ping_admonition")
                 irc.reply(admonition)
@@ -901,13 +907,13 @@ class Fedora(callbacks.Plugin):
         increment = direction == "++"  # If not, then it must be decrement
 
         # Check that these are FAS users
-        if not agent in self.nickmap and not agent in self.users:
+        if agent not in self.nickmap and agent not in self.users:
             self.log.info("Saw %s from %s, but %s not in FAS" % (recip, agent, agent))
             if explicit:
                 irc.reply("Couldn't find %s in FAS" % agent)
             return
 
-        if not recip in self.nickmap and not recip in self.users:
+        if recip not in self.nickmap and recip not in self.users:
             self.log.info("Saw %s from %s, but %s not in FAS" % (recip, agent, recip))
             if explicit:
                 irc.reply("Couldn't find %s in FAS" % recip)
@@ -951,8 +957,8 @@ class Fedora(callbacks.Plugin):
             vote = 1 if increment else -1
 
             if data[fkey][agent].get(recip) == vote:
-                ## People found this response annoying.
-                ## https://github.com/fedora-infra/supybot-fedora/issues/25
+                # People found this response annoying.
+                # https://github.com/fedora-infra/supybot-fedora/issues/25
                 # irc.reply(
                 #    "You have already given %i karma to %s" % (vote, recip))
                 return
@@ -1004,7 +1010,7 @@ class Fedora(callbacks.Plugin):
         Return MediaWiki link syntax for a FAS user's page on the wiki."""
         try:
             person = self.fasclient.person_by_username(name)
-        except:
+        except Exception:
             irc.reply('Error getting info for user: "%s"' % name)
             return
         if not person:
@@ -1025,7 +1031,7 @@ class Fedora(callbacks.Plugin):
             "mirroradmins?name=" + hostname
         )
         result = self._load_json(url)
-        if not "admins" in result:
+        if "admins" not in result:
             irc.reply(result.get("message", "Something went wrong"))
             return
         string = "Mirror Admins of %s: " % hostname
@@ -1232,7 +1238,7 @@ class Fedora(callbacks.Plugin):
         symbols = dict(
             [
                 (processor.__name__.lower(), processor.__name__[:3].upper())
-                for processor in fedmsg.meta.processors
+                for processor in fedmsg.meta.processors  # noqa: F821
             ]
         )
         symbols.update(
@@ -1257,7 +1263,7 @@ class Fedora(callbacks.Plugin):
         del symbols["UNH"]
         del symbols["ANN"]  # And this one is unused...
 
-        key_fmt = lambda d: ", ".join(sorted(d.keys()))
+        key_fmt = lambda d: ", ".join(sorted(d.keys()))  # noqa: E731
 
         if symbol not in symbols:
             response = "No such symbol %r.  Try one of %s"
@@ -1329,7 +1335,7 @@ class Fedora(callbacks.Plugin):
             # none in the current... then that's a 100% drop off.
             percent = -100
 
-        sign = lambda value: value >= 0 and "+" or "-"
+        sign = lambda value: value >= 0 and "+" or "-"  # noqa: E731
 
         template = "{sym}, {name} {sign}{percent:.2f}% over {phrase}"
         response = template.format(
@@ -1350,7 +1356,7 @@ class Fedora(callbacks.Plugin):
         )
         irc.reply(response.encode("utf-8"))
 
-        to_utc = lambda t: time.gmtime(time.mktime(t.timetuple()))
+        to_utc = lambda t: time.gmtime(time.mktime(t.timetuple()))  # noqa: E731
         # And a final line for "x-axis tics"
         t1_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t1))
         t2_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t2))

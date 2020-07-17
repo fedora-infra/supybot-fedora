@@ -27,15 +27,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
-import unittest
+from supybot import test, world
 
-from supybot import world
-from supybot.test import *
-
-world.myVerbose = verbosity.MESSAGES
+world.myVerbose = test.verbosity.MESSAGES
 
 
-class FedoraTestCase(PluginTestCase):
+class FedoraTestCase(test.PluginTestCase):
     plugins = ("Fedora",)
 
     def testRandom(self):

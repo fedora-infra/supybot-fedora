@@ -64,7 +64,7 @@ importlib.reload(plugin)  # In case we're being reloaded.
 # reloaded when this plugin is reloaded.  Don't forget to import them as well!
 
 if world.testing:
-    from . import test
+    from . import test  # noqa: F401
 
 Class = plugin.Class
 configure = config.configure
