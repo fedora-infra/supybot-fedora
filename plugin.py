@@ -32,7 +32,7 @@ import arrow
 import copy
 import sgmllib
 import shelve
-import htmlentitydefs
+import html.entities
 import requests
 import time
 
@@ -58,7 +58,7 @@ import fedmsg.config
 import fedmsg.meta
 
 import simplejson
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import socket
 import pytz
 import datetime
@@ -125,7 +125,7 @@ class ThreadPool(object):
 
 
 class Title(sgmllib.SGMLParser):
-    entitydefs = htmlentitydefs.entitydefs.copy()
+    entitydefs = html.entities.entitydefs.copy()
     entitydefs['nbsp'] = ' '
 
     def __init__(self):
@@ -290,7 +290,7 @@ class Fedora(callbacks.Plugin):
         else:
             n = 6  # Show 6 pull requests
             for pull in results[:n]:
-                irc.reply(u'@{user}\'s "{title}" {url} filed {age}'.format(
+                irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
                     user=pull['user'],
                     title=pull['title'],
                     url=pull['url'],
@@ -419,7 +419,7 @@ class Fedora(callbacks.Plugin):
             committers = ircutils.bold('commit: ') + committers
 
         resp = '; '.join(
-            filter(lambda x: x != '', [owners, admins, committers]))
+            [x for x in [owners, admins, committers] if x != ''])
 
         # Then try using fedora-scm-requests for more info
         url = 'https://pagure.io/releng/fedora-scm-requests/raw/master/f/rpms/'
@@ -429,7 +429,7 @@ class Fedora(callbacks.Plugin):
                 yml = yaml.load(req.text)
                 if 'bugzilla_contact' in yml:
                     lines = []
-                    for k, v in yml['bugzilla_contact'].iteritems():
+                    for k, v in yml['bugzilla_contact'].items():
                         lines.append('%s: %s' % (ircutils.bold(k), v))
                     resp += ' - ' + '; '.join(lines)
             except yaml.scanner.ScannerError:
@@ -470,7 +470,7 @@ class Fedora(callbacks.Plugin):
         addresses for a match."""
         find_name = to_unicode(find_name)
         matches = []
-        for entry in self.faslist.keys():
+        for entry in self.faslist:
             if entry.find(find_name.lower()) != -1:
                 matches.append(entry)
         if len(matches) == 0:
@@ -721,7 +721,7 @@ class Fedora(callbacks.Plugin):
         Humor mmcgrath."""
 
         # Import this here to avoid a circular import problem.
-        from __init__ import __version__
+        from . import __version__
 
         irc.reply(str('kwack kwack'))
         irc.reply(str('bork bork bork'))
@@ -1053,15 +1053,12 @@ class Fedora(callbacks.Plugin):
             if 'irc.freenode.net' in location
         ]), key=itemgetter(0))
 
-        test, meetings = tee(meetings)
-        try:
-            test.next()
-        except StopIteration:
+        if not meetings:
             response = "There are no meetings scheduled at all."
             irc.reply(response.encode('utf-8'))
             return
 
-        for date, meeting in islice(meetings, 0, 5):
+        for date, meeting in meetings[:5]:
             response = "In #%s is %s (starting %s)" % (
                 meeting['meeting_location'].split('@')[0].strip(),
                 meeting['meeting_name'],
@@ -1079,15 +1076,12 @@ class Fedora(callbacks.Plugin):
         channel = channel.strip('#').split('@')[0]
         meetings = sorted(self._future_meetings(channel), key=itemgetter(0))
 
-        test, meetings = tee(meetings)
-        try:
-            test.next()
-        except StopIteration:
+        if not meetings:
             response = "There are no meetings scheduled for #%s." % channel
             irc.reply(response.encode('utf-8'))
             return
 
-        for date, meeting in islice(meetings, 0, 3):
+        for date, meeting in meetings[:3]:
             response = "In #%s is %s (starting %s)" % (
                 channel,
                 meeting['meeting_name'],
@@ -1095,7 +1089,7 @@ class Fedora(callbacks.Plugin):
             )
             irc.reply(response.encode('utf-8'))
         base = "https://apps.fedoraproject.org/calendar/location/"
-        url = base + urllib.quote("%s@irc.freenode.net/" % channel)
+        url = base + urllib.parse.quote("%s@irc.freenode.net/" % channel)
         irc.reply("- " + url.encode('utf-8'))
     nextmeeting = wrap(nextmeeting, ['text'])
 
@@ -1275,7 +1269,7 @@ class Fedora(callbacks.Plugin):
 
         sign = lambda value: value >= 0 and '+' or '-'
 
-        template = u"{sym}, {name} {sign}{percent:.2f}% over {phrase}"
+        template = "{sym}, {name} {sign}{percent:.2f}% over {phrase}"
         response = template.format(
             sym=symbol,
             name=symbols[symbol],
@@ -1288,7 +1282,7 @@ class Fedora(callbacks.Plugin):
         # Now, make a graph out of it.
         sparkline = Utils.sparkline(sparkline_values)
 
-        template = u"     {sparkline}  ⤆ over {phrase}"
+        template = "     {sparkline}  ⤆ over {phrase}"
         response = template.format(
             sym=symbol,
             sparkline=sparkline,
@@ -1300,8 +1294,8 @@ class Fedora(callbacks.Plugin):
         # And a final line for "x-axis tics"
         t1_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t1))
         t2_fmt = time.strftime("%H:%M UTC %m/%d", to_utc(t2))
-        padding = u" " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
-        template = u"     ↑ {t1}{padding}↑ {t2}"
+        padding = " " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
+        template = "     ↑ {t1}{padding}↑ {t2}"
         response = template.format(t1=t1_fmt, t2=t2_fmt, padding=padding)
         irc.reply(response.encode('utf-8'))
     quote = wrap(quote, ['text'])
@@ -1312,9 +1306,9 @@ class Utils(object):
 
     @classmethod
     def sparkline(cls, values):
-        bar = u'▁▂▃▄▅▆▇█'
+        bar = '▁▂▃▄▅▆▇█'
         barcount = len(bar) - 1
-        values = map(float, values)
+        values = [float(v) for v in values]
         mn, mx = min(values), max(values)
         extent = mx - mn
 
@@ -1323,7 +1317,7 @@ class Utils(object):
         else:
             indices = [int((n - mn) / extent * barcount) for n in values]
 
-        unicode_sparkline = u''.join([bar[i] for i in indices])
+        unicode_sparkline = ''.join([bar[i] for i in indices])
         return unicode_sparkline
 
     @classmethod

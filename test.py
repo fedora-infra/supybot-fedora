@@ -27,9 +27,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
-from supybot import world
-from supybot.test import PluginTestCase
+import unittest
 
+from supybot import world
+from supybot.test import *
+
+world.myVerbose = verbosity.MESSAGES
 class FedoraTestCase(PluginTestCase):
     plugins = ('Fedora', )
 
