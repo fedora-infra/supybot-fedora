@@ -49,7 +49,7 @@ import supybot.ircutils as ircutils
 import supybot.world as world
 from supybot.commands import wrap
 
-from fedora.client import AppError
+from fedora.client import AppError, AuthError
 from fedora.client.fas2 import AccountSystem
 
 from kitchen.text.converters import to_unicode
@@ -170,7 +170,8 @@ class Fedora(callbacks.Plugin):
         self.password = self.registryValue('fas.password')
 
         self.fasclient = AccountSystem(self.fasurl, username=self.username,
-                                       password=self.password)
+                                            password=self.password)
+
         # URLs
         # self.url = {}
 
@@ -189,12 +190,17 @@ class Fedora(callbacks.Plugin):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(None)
         self.log.info("Downloading user data")
-        request = self.fasclient.send_request('/user/list',
+        try:
+            request = self.fasclient.send_request('/user/list',
                                               req_params={'search': '*'},
                                               auth=True,
                                               timeout=240)
-        users = request['people'] + request['unapproved_people']
-        del request
+            users = request['people'] + request['unapproved_people']
+            del request
+        except AuthError:
+            self.log.info("Error Authorizing to FAS")
+            users = []
+        
         self.log.info("Caching necessary user data")
         self.users = {}
         self.faslist = {}

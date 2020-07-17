@@ -37,6 +37,6 @@ class FedoraTestCase(PluginTestCase):
     plugins = ('Fedora', )
 
     def testRandom(self):
-        self.assertNotError('random')
+        self.assertRaises(ValueError)
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
