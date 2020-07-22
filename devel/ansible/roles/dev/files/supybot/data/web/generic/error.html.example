@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="UTF-8" />
+  <title>%(title)s</title>
+  <link rel="stylesheet" href="/default.css" />
+ </head>
+ <body class="error">
+  <h1>Error</h1>
+  <p>%(error)s</p>
+ </body>
+</html>

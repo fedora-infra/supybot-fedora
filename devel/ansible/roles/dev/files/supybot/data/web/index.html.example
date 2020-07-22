@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Supybot Web server index</title>
+  <link rel="stylesheet" type="text/css" href="/default.css" media="screen" />
+ </head>
+ <body class="purelisting">
+  <h1>Supybot web server index</h1>
+  <p>Here is a list of the plugins that have a Web interface:
+  </p>
+  %(list)s
+ </body>
+</html>
