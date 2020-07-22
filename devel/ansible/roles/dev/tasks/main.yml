@@ -1,0 +1,52 @@
+---
+- name: Install RPM packages
+  dnf:
+      name: ['limnoria', 'ngircd', 'weechat', 'git', 'vim', 'poetry']
+      state: present
+
+- name: set ngircd config
+  copy:
+      src: ngircd.conf
+      dest: /etc/ngircd.conf
+
+- name: Start ngircd service using systemd
+  systemd:
+    state: started
+    name: ngircd
+    daemon_reload: yes
+    enabled: yes
+
+- name: install python deps with poetry
+  shell: poetry install
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /vagrant/
+
+- name: copy supybot config
+  copy:
+      src: supybot
+      dest: /home/vagrant
+      owner: vagrant
+      group: vagrant
+
+- name: Install the systemd unit files for the supybot service
+  copy:
+      src: supybot.service
+      dest: /etc/systemd/system/supybot.service
+      mode: 0644
+
+- name: Start supybot service using systemd
+  systemd:
+    state: started
+    name: supybot
+    daemon_reload: yes
+    enabled: yes
+
+- name: Install the .bashrc
+  copy:
+      src: .bashrc
+      dest: /home/vagrant/.bashrc
+      mode: 0644
+      owner: vagrant
+      group: vagrant

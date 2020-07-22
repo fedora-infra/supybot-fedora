@@ -1,0 +1,12 @@
+[Unit]
+Description=supybot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=vagrant
+WorkingDirectory=/vagrant
+ExecStart=poetry run supybot /home/vagrant/supybot/supybot.conf
+
+[Install]
+WantedBy=multi-user.target
