@@ -33,10 +33,13 @@ from supybot import world
 from supybot.test import *
 
 world.myVerbose = verbosity.MESSAGES
+
+
 class FedoraTestCase(PluginTestCase):
-    plugins = ('Fedora', )
+    plugins = ("Fedora",)
 
     def testRandom(self):
         self.assertRaises(ValueError)
+
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

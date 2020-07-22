@@ -54,8 +54,8 @@ from fedora.client.fas2 import AccountSystem
 
 from kitchen.text.converters import to_unicode
 
-#import fedmsg.config
-#import fedmsg.meta
+# import fedmsg.config
+# import fedmsg.meta
 
 import simplejson
 import urllib.request, urllib.parse, urllib.error
@@ -69,7 +69,7 @@ from operator import itemgetter
 
 SPARKLINE_RESOLUTION = 50
 
-datagrepper_url = 'https://apps.fedoraproject.org/datagrepper/raw'
+datagrepper_url = "https://apps.fedoraproject.org/datagrepper/raw"
 
 
 def datagrepper_query(kwargs):
@@ -78,16 +78,16 @@ def datagrepper_query(kwargs):
     The arguments for this are a little clumsy; this is imposed on us by
     multiprocessing.Pool.
     """
-    start, end = kwargs.pop('start'), kwargs.pop('end')
+    start, end = kwargs.pop("start"), kwargs.pop("end")
     params = {
-        'start': time.mktime(start.timetuple()),
-        'end': time.mktime(end.timetuple()),
+        "start": time.mktime(start.timetuple()),
+        "end": time.mktime(end.timetuple()),
     }
     params.update(kwargs)
 
     req = requests.get(datagrepper_url, params=params)
     json_out = simplejson.loads(req.text)
-    result = int(json_out['total'])
+    result = int(json_out["total"])
     return result
 
 
@@ -126,11 +126,11 @@ class ThreadPool(object):
 
 class Title(sgmllib.SGMLParser):
     entitydefs = html.entities.entitydefs.copy()
-    entitydefs['nbsp'] = ' '
+    entitydefs["nbsp"] = " "
 
     def __init__(self):
         self.inTitle = False
-        self.title = ''
+        self.title = ""
         sgmllib.SGMLParser.__init__(self)
 
     def start_title(self, attrs):
@@ -141,11 +141,11 @@ class Title(sgmllib.SGMLParser):
 
     def unknown_entityref(self, name):
         if self.inTitle:
-            self.title += ' '
+            self.title += " "
 
     def unknown_charref(self, name):
         if self.inTitle:
-            self.title += ' '
+            self.title += " "
 
     def handle_data(self, data):
         if self.inTitle:
@@ -154,6 +154,7 @@ class Title(sgmllib.SGMLParser):
 
 class Fedora(callbacks.Plugin):
     """Use this plugin to retrieve Fedora-related information."""
+
     threaded = True
 
     def __init__(self, irc):
@@ -165,58 +166,67 @@ class Fedora(callbacks.Plugin):
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
-        self.fasurl = self.registryValue('fas.url')
-        self.username = self.registryValue('fas.username')
-        self.password = self.registryValue('fas.password')
+        self.fasurl = self.registryValue("fas.url")
+        self.username = self.registryValue("fas.username")
+        self.password = self.registryValue("fas.password")
 
-        self.fasclient = AccountSystem(self.fasurl, username=self.username,
-                                            password=self.password)
+        self.fasclient = AccountSystem(
+            self.fasurl, username=self.username, password=self.password
+        )
 
         # URLs
         # self.url = {}
 
-        self.github_oauth_token = self.registryValue('github.oauth_token')
+        self.github_oauth_token = self.registryValue("github.oauth_token")
 
-        self.karma_tokens = ('++', '--') if self.allow_negative else ('++',)
+        self.karma_tokens = ("++", "--") if self.allow_negative else ("++",)
 
         # fetch necessary caches
         self._refresh()
 
         # Pull in /etc/fedmsg.d/ so we can build the fedmsg.meta processors.
-        #fm_config = fedmsg.config.load_config()
-        #fedmsg.meta.make_processors(**fm_config)
+        # fm_config = fedmsg.config.load_config()
+        # fedmsg.meta.make_processors(**fm_config)
 
     def _refresh(self):
         timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(None)
         self.log.info("Downloading user data")
         try:
-            request = self.fasclient.send_request('/user/list',
-                                              req_params={'search': '*'},
-                                              auth=True,
-                                              timeout=240)
-            users = request['people'] + request['unapproved_people']
+            request = self.fasclient.send_request(
+                "/user/list", req_params={"search": "*"}, auth=True, timeout=240
+            )
+            users = request["people"] + request["unapproved_people"]
             del request
         except AuthError:
             self.log.info("Error Authorizing to FAS")
             users = []
-        
+
         self.log.info("Caching necessary user data")
         self.users = {}
         self.faslist = {}
         self.nickmap = {}
         for user in users:
-            name = user['username']
+            name = user["username"]
             self.users[name] = {}
-            self.users[name]['id'] = user['id']
-            key = ' '.join([user['username'], user['email'] or '',
-                            user['human_name'] or '', user['ircnick'] or ''])
+            self.users[name]["id"] = user["id"]
+            key = " ".join(
+                [
+                    user["username"],
+                    user["email"] or "",
+                    user["human_name"] or "",
+                    user["ircnick"] or "",
+                ]
+            )
             key = key.lower()
-            value = "%s '%s' <%s>" % (user['username'], user['human_name'] or
-                                      '', user['email'] or '')
+            value = "%s '%s' <%s>" % (
+                user["username"],
+                user["human_name"] or "",
+                user["email"] or "",
+            )
             self.faslist[key] = value
-            if user['ircnick']:
-                self.nickmap[user['ircnick']] = name
+            if user["ircnick"]:
+                self.nickmap[user["ircnick"]] = name
 
         socket.setdefaulttimeout(timeout)
 
@@ -228,19 +238,20 @@ class Fedora(callbacks.Plugin):
         irc.reply("Downloading caches.  This could take a while...")
         self._refresh()
         irc.replySuccess()
+
     refresh = wrap(refresh)
 
     @property
     def karma_db_path(self):
-        return self.registryValue('karma.db_path')
+        return self.registryValue("karma.db_path")
 
     @property
     def allow_unaddressed_karma(self):
-        return self.registryValue('karma.unaddressed')
+        return self.registryValue("karma.unaddressed")
 
     @property
     def allow_negative(self):
-        return self.registryValue('karma.allow_negative')
+        return self.registryValue("karma.allow_negative")
 
     def _load_json(self, url):
         timeout = socket.getdefaulttimeout()
@@ -258,11 +269,11 @@ class Fedora(callbacks.Plugin):
         """
 
         slug = slug.strip()
-        if not slug or slug.count('/') != 0:
-            irc.reply('Must be a GitHub org/username or pagure tag')
+        if not slug or slug.count("/") != 0:
+            irc.reply("Must be a GitHub org/username or pagure tag")
             return
 
-        irc.reply('One moment, please...  Looking up %s.' % slug)
+        irc.reply("One moment, please...  Looking up %s." % slug)
         fail_on_github, fail_on_pagure = False, False
         github_repos, pagure_repos = [], []
         try:
@@ -278,34 +289,35 @@ class Fedora(callbacks.Plugin):
             fail_on_pagure = True
 
         if fail_on_github and fail_on_pagure:
-            irc.reply('Could not find %s on GitHub or pagure.io' % slug)
+            irc.reply("Could not find %s on GitHub or pagure.io" % slug)
             return
 
-        results = sum([
-            list(self.yield_github_pulls(slug, r)) for r in github_repos
-        ], []) + sum([
-            list(self.yield_pagure_pulls(slug, r)) for r in pagure_repos
-        ], [])
+        results = sum(
+            [list(self.yield_github_pulls(slug, r)) for r in github_repos], []
+        ) + sum([list(self.yield_pagure_pulls(slug, r)) for r in pagure_repos], [])
 
         # Reverse-sort by time (newest-first)
-        comparator = lambda a, b: cmp(b['age_numeric'], a['age_numeric'])
+        comparator = lambda a, b: cmp(b["age_numeric"], a["age_numeric"])
         results.sort(comparator)
 
         if not results:
-            irc.reply('No pending pull requests on {slug}'.format(slug=slug))
+            irc.reply("No pending pull requests on {slug}".format(slug=slug))
         else:
             n = 6  # Show 6 pull requests
             for pull in results[:n]:
-                irc.reply('@{user}\'s "{title}" {url} filed {age}'.format(
-                    user=pull['user'],
-                    title=pull['title'],
-                    url=pull['url'],
-                    age=pull['age'],
-                ).encode('utf-8'))
+                irc.reply(
+                    '@{user}\'s "{title}" {url} filed {age}'.format(
+                        user=pull["user"],
+                        title=pull["title"],
+                        url=pull["url"],
+                        age=pull["age"],
+                    ).encode("utf-8")
+                )
 
             if len(results) > n:
-                irc.reply('... and %i more.' % (len(results) - n))
-    pulls = wrap(pulls, ['text'])
+                irc.reply("... and %i more." % (len(results) - n))
+
+    pulls = wrap(pulls, ["text"])
 
     def yield_github_repos(self, username):
         self.log.info("Finding github repos for %r" % username)
@@ -313,73 +325,74 @@ class Fedora(callbacks.Plugin):
         url = tmpl.format(username=username)
         auth = dict(access_token=self.github_oauth_token)
         for result in self.yield_github_results(url, auth):
-            yield result['name']
+            yield result["name"]
 
     def yield_github_pulls(self, username, repo):
         self.log.info("Finding github pull requests for %r %r" % (username, repo))
-        tmpl = "https://api.github.com/repos/{username}/{repo}/" + \
-            "pulls?per_page=100"
+        tmpl = "https://api.github.com/repos/{username}/{repo}/pulls?per_page=100"
         url = tmpl.format(username=username, repo=repo)
         auth = dict(access_token=self.github_oauth_token)
         for result in self.yield_github_results(url, auth):
             yield dict(
-                user=result['user']['login'],
-                title=result['title'],
-                url=result['html_url'],
-                age=arrow.get(result['created_at']).humanize(),
-                age_numeric=arrow.get(result['created_at']),
+                user=result["user"]["login"],
+                title=result["title"],
+                url=result["html_url"],
+                age=arrow.get(result["created_at"]).humanize(),
+                age_numeric=arrow.get(result["created_at"]),
             )
 
     def yield_github_results(self, url, auth):
         results = []
         link = dict(next=url)
-        while 'next' in link:
-            response = requests.get(link['next'], params=auth)
+        while "next" in link:
+            response = requests.get(link["next"], params=auth)
 
             if response.status_code == 404:
-                raise IOError("404 for %r" % link['next'])
+                raise IOError("404 for %r" % link["next"])
 
             # And.. if we didn't get good results, just bail.
             if response.status_code != 200:
                 raise IOError(
-                    "Non-200 status code %r; %r; %r" % (
-                        response.status_code, link['next'], response.json))
+                    "Non-200 status code %r; %r; %r"
+                    % (response.status_code, link["next"], response.json)
+                )
 
             results = response.json()
 
             for result in results:
                 yield result
 
-            field = response.headers.get('link', None)
+            field = response.headers.get("link", None)
 
             link = dict()
             if field:
-                link = dict([
-                    (
-                        part.split('; ')[1][5:-1],
-                        part.split('; ')[0][1:-1],
-                    ) for part in field.split(', ')
-                ])
+                link = dict(
+                    [
+                        (part.split("; ")[1][5:-1], part.split("; ")[0][1:-1],)
+                        for part in field.split(", ")
+                    ]
+                )
 
     def yield_pagure_repos(self, tag):
         self.log.info("Finding pagure repos for %r" % tag)
         tmpl = "https://pagure.io/api/0/projects?tags={tag}"
         url = tmpl.format(tag=tag)
-        for result in self.yield_pagure_results(url, 'projects'):
-            yield result['name']
+        for result in self.yield_pagure_results(url, "projects"):
+            yield result["name"]
 
     def yield_pagure_pulls(self, tag, repo):
         self.log.info("Finding pagure pull requests for %r %r" % (tag, repo))
         tmpl = "https://pagure.io/api/0/{repo}/pull-requests"
         url = tmpl.format(tag=tag, repo=repo)
-        for result in self.yield_pagure_results(url, 'requests'):
+        for result in self.yield_pagure_results(url, "requests"):
             yield dict(
-                user=result['user']['name'],
-                title=result['title'],
-                url='https://pagure.io/{repo}/pull-request/{id}'.format(
-                    repo=result['project']['name'], id=result['id']),
-                age=arrow.get(result['date_created']).humanize(),
-                age_numeric=arrow.get(result['date_created']),
+                user=result["user"]["name"],
+                title=result["title"],
+                url="https://pagure.io/{repo}/pull-request/{id}".format(
+                    repo=result["project"]["name"], id=result["id"]
+                ),
+                age=arrow.get(result["date_created"]).humanize(),
+                age_numeric=arrow.get(result["date_created"]),
             )
 
     def yield_pagure_results(self, url, key):
@@ -391,8 +404,9 @@ class Fedora(callbacks.Plugin):
         # And.. if we didn't get good results, just bail.
         if response.status_code != 200:
             raise IOError(
-                "Non-200 status code %r; %r; %r" % (
-                    response.status_code, url, response.text))
+                "Non-200 status code %r; %r; %r"
+                % (response.status_code, url, response.text)
+            )
 
         results = response.json()
         results = results[key]
@@ -406,44 +420,44 @@ class Fedora(callbacks.Plugin):
         Retrieve the owner of a given package
         """
         # First use pagure info
-        url = 'https://src.fedoraproject.org/api/0/rpms/'
+        url = "https://src.fedoraproject.org/api/0/rpms/"
         req = requests.get(url + package)
         if req.status_code == 404:
-            irc.reply('Package %s not found.' % package)
+            irc.reply("Package %s not found." % package)
             return
 
         req_json = req.json()
-        admins = ', '.join(req_json['access_users']['admin'])
-        owners = ', '.join(req_json['access_users']['owner'])
-        committers = ', '.join(req_json['access_users']['commit'])
+        admins = ", ".join(req_json["access_users"]["admin"])
+        owners = ", ".join(req_json["access_users"]["owner"])
+        committers = ", ".join(req_json["access_users"]["commit"])
 
         if owners:
-            owners = ircutils.bold('owner: ') + owners
+            owners = ircutils.bold("owner: ") + owners
         if admins:
-            admins = ircutils.bold('admin: ') + admins
+            admins = ircutils.bold("admin: ") + admins
         if committers:
-            committers = ircutils.bold('commit: ') + committers
+            committers = ircutils.bold("commit: ") + committers
 
-        resp = '; '.join(
-            [x for x in [owners, admins, committers] if x != ''])
+        resp = "; ".join([x for x in [owners, admins, committers] if x != ""])
 
         # Then try using fedora-scm-requests for more info
-        url = 'https://pagure.io/releng/fedora-scm-requests/raw/master/f/rpms/'
+        url = "https://pagure.io/releng/fedora-scm-requests/raw/master/f/rpms/"
         req = requests.get(url + package)
         if req.status_code == 200:
             try:
                 yml = yaml.load(req.text)
-                if 'bugzilla_contact' in yml:
+                if "bugzilla_contact" in yml:
                     lines = []
-                    for k, v in yml['bugzilla_contact'].items():
-                        lines.append('%s: %s' % (ircutils.bold(k), v))
-                    resp += ' - ' + '; '.join(lines)
+                    for k, v in yml["bugzilla_contact"].items():
+                        lines.append("%s: %s" % (ircutils.bold(k), v))
+                    resp += " - " + "; ".join(lines)
             except yaml.scanner.ScannerError:
                 # If we can't parse the YAML for some reason, don't worry about
                 # it. Just return the initial response.
                 pass
         irc.reply(resp)
-    whoowns = wrap(whoowns, ['text'])
+
+    whoowns = wrap(whoowns, ["text"])
 
     def wiki(self, irc, msg, args, page_name):
         """<wiki_page>
@@ -454,20 +468,22 @@ class Fedora(callbacks.Plugin):
         # Properly format spaces for the wiki link.
         link.replace(" ", "_")
         irc.reply(link)
-    wiki = wrap(wiki, ['text'])
+
+    wiki = wrap(wiki, ["text"])
 
     def what(self, irc, msg, args, package):
         """<package>
 
         Returns a description of a given package.
         """
-        url = 'https://apps.fedoraproject.org/mdapi/rawhide/srcpkg/'
+        url = "https://apps.fedoraproject.org/mdapi/rawhide/srcpkg/"
         req = requests.get(url + package)
         if req.status_code == 404:
-            irc.reply('No such package exists.')
+            irc.reply("No such package exists.")
         else:
-            irc.reply('%s: %s' % (package, req.json()['summary']))
-    what = wrap(what, ['text'])
+            irc.reply("%s: %s" % (package, req.json()["summary"]))
+
+    what = wrap(what, ["text"])
 
     def fas(self, irc, msg, args, find_name):
         """<query>
@@ -485,8 +501,9 @@ class Fedora(callbacks.Plugin):
             output = []
             for match in matches:
                 output.append(self.faslist[match])
-            irc.reply(' - '.join(output).encode('utf-8'))
-    fas = wrap(fas, ['text'])
+            irc.reply(" - ".join(output).encode("utf-8"))
+
+    fas = wrap(fas, ["text"])
 
     def hellomynameis(self, irc, msg, args, name):
         """<username>
@@ -496,14 +513,16 @@ class Fedora(callbacks.Plugin):
         try:
             person = self.fasclient.person_by_username(name)
         except:
-            irc.reply('Something blew up, please try again')
+            irc.reply("Something blew up, please try again")
             return
         if not person:
-            irc.reply('Sorry, but you don\'t exist')
+            irc.reply("Sorry, but you don't exist")
             return
-        irc.reply(('%(username)s \'%(human_name)s\' <%(email)s>' %
-                   person).encode('utf-8'))
-    hellomynameis = wrap(hellomynameis, ['text'])
+        irc.reply(
+            ("%(username)s '%(human_name)s' <%(email)s>" % person).encode("utf-8")
+        )
+
+    hellomynameis = wrap(hellomynameis, ["text"])
 
     def himynameis(self, irc, msg, args, name):
         """<username>
@@ -512,50 +531,54 @@ class Fedora(callbacks.Plugin):
         try:
             person = self.fasclient.person_by_username(name)
         except:
-            irc.reply('Something blew up, please try again')
+            irc.reply("Something blew up, please try again")
             return
         if not person:
-            irc.reply('Sorry, but you don\'t exist')
+            irc.reply("Sorry, but you don't exist")
             return
-        irc.reply(('%(username)s \'Slim Shady\' <%(email)s>' %
-                   person).encode('utf-8'))
-    himynameis = wrap(himynameis, ['text'])
+        irc.reply(("%(username)s 'Slim Shady' <%(email)s>" % person).encode("utf-8"))
+
+    himynameis = wrap(himynameis, ["text"])
 
     def dctime(self, irc, msg, args, dcname):
         """<dcname>
 
         Returns the current time of the datacenter identified by dcname.
         Supported DCs: PHX2, RDU, AMS, osuosl, ibiblio."""
-        timezone_name = ''
+        timezone_name = ""
         dcname_lower = dcname.lower()
-        if dcname_lower == 'phx2':
-            timezone_name = 'US/Arizona'
-        elif dcname_lower in ['rdu', 'ibiblio']:
-            timezone_name = 'US/Eastern'
-        elif dcname_lower == 'osuosl':
-            timezone_name = 'US/Pacific'
-        elif dcname_lower in ['ams', 'internetx']:
-            timezone_name = 'Europe/Amsterdam'
+        if dcname_lower == "phx2":
+            timezone_name = "US/Arizona"
+        elif dcname_lower in ["rdu", "ibiblio"]:
+            timezone_name = "US/Eastern"
+        elif dcname_lower == "osuosl":
+            timezone_name = "US/Pacific"
+        elif dcname_lower in ["ams", "internetx"]:
+            timezone_name = "Europe/Amsterdam"
         else:
-            irc.reply('Datacenter %s is unknown' % dcname)
+            irc.reply("Datacenter %s is unknown" % dcname)
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
         except:
-            irc.reply('The timezone of "%s" was unknown: "%s"' % (
-                dcname, timezone_name))
+            irc.reply(
+                'The timezone of "%s" was unknown: "%s"' % (dcname, timezone_name)
+            )
             return
-        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
-                  (dcname, time.strftime('%H:%M'), timezone_name))
-    dctime = wrap(dctime, ['text'])
+        irc.reply(
+            'The current local time of "%s" is: "%s" (timezone: %s)'
+            % (dcname, time.strftime("%H:%M"), timezone_name)
+        )
+
+    dctime = wrap(dctime, ["text"])
 
     def localtime(self, irc, msg, args, name):
         """<username>
 
         Returns the current time of the user.
         The timezone is queried from FAS."""
-        if name in ['zod', 'zodbot']:
-            irc.reply('There is no time! Kneel before zod!')
+        if name in ["zod", "zodbot"]:
+            irc.reply("There is no time! Kneel before zod!")
             return
 
         try:
@@ -566,19 +589,21 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('User "%s" doesn\'t exist' % name)
             return
-        timezone_name = person['timezone']
+        timezone_name = person["timezone"]
         if timezone_name is None:
             irc.reply('User "%s" doesn\'t share their timezone' % name)
             return
         try:
             time = datetime.datetime.now(pytz.timezone(timezone_name))
         except:
-            irc.reply('The timezone of "%s" was unknown: "%s"' % (
-                name, timezone_name))
+            irc.reply('The timezone of "%s" was unknown: "%s"' % (name, timezone_name))
             return
-        irc.reply('The current local time of "%s" is: "%s" (timezone: %s)' %
-                  (name, time.strftime('%H:%M'), timezone_name))
-    localtime = wrap(localtime, ['text'])
+        irc.reply(
+            'The current local time of "%s" is: "%s" (timezone: %s)'
+            % (name, time.strftime("%H:%M"), timezone_name)
+        )
+
+    localtime = wrap(localtime, ["text"])
 
     def fasinfo(self, irc, msg, args, name):
         """<username>
@@ -592,46 +617,49 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('User "%s" doesn\'t exist' % name)
             return
-        person['creation'] = person['creation'].split(' ')[0]
-        string = ("User: %(username)s, Name: %(human_name)s"
-                  ", email: %(email)s, Creation: %(creation)s"
-                  ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
-                  ", Locale: %(locale)s"
-                  ", GPG key ID: %(gpg_keyid)s, Status: %(status)s") % person
-        irc.reply(string.encode('utf-8'))
+        person["creation"] = person["creation"].split(" ")[0]
+        string = (
+            "User: %(username)s, Name: %(human_name)s"
+            ", email: %(email)s, Creation: %(creation)s"
+            ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
+            ", Locale: %(locale)s"
+            ", GPG key ID: %(gpg_keyid)s, Status: %(status)s"
+        ) % person
+        irc.reply(string.encode("utf-8"))
 
         # List of unapproved groups is easy
-        unapproved = ''
-        for group in person['unapproved_memberships']:
-            unapproved = unapproved + "%s " % group['name']
-        if unapproved != '':
-            irc.reply('Unapproved Groups: %s' % unapproved)
+        unapproved = ""
+        for group in person["unapproved_memberships"]:
+            unapproved = unapproved + "%s " % group["name"]
+        if unapproved != "":
+            irc.reply("Unapproved Groups: %s" % unapproved)
 
         # List of approved groups requires a separate query to extract roles
-        constraints = {'username': name, 'group': '%',
-                       'role_status': 'approved'}
-        columns = ['username', 'group', 'role_type']
+        constraints = {"username": name, "group": "%", "role_status": "approved"}
+        columns = ["username", "group", "role_type"]
         roles = []
         try:
-            roles = self.fasclient.people_query(constraints=constraints,
-                                                columns=columns)
+            roles = self.fasclient.people_query(
+                constraints=constraints, columns=columns
+            )
         except:
-            irc.reply('Error getting group memberships.')
+            irc.reply("Error getting group memberships.")
             return
 
-        approved = ''
+        approved = ""
         for role in roles:
-            if role['role_type'] == 'sponsor':
-                approved += '+' + role['group'] + ' '
-            elif role['role_type'] == 'administrator':
-                approved += '@' + role['group'] + ' '
+            if role["role_type"] == "sponsor":
+                approved += "+" + role["group"] + " "
+            elif role["role_type"] == "administrator":
+                approved += "@" + role["group"] + " "
             else:
-                approved += role['group'] + ' '
-        if approved == '':
+                approved += role["group"] + " "
+        if approved == "":
             approved = "None"
 
-        irc.reply('Approved Groups: %s' % approved)
-    fasinfo = wrap(fasinfo, ['text'])
+        irc.reply("Approved Groups: %s" % approved)
+
+    fasinfo = wrap(fasinfo, ["text"])
 
     def group(self, irc, msg, args, name):
         """<group short name>
@@ -639,11 +667,11 @@ class Fedora(callbacks.Plugin):
         Return information about a Fedora Account System group."""
         try:
             group = self.fasclient.group_by_name(name)
-            irc.reply('%s: %s' %
-                      (name, group['display_name']))
+            irc.reply("%s: %s" % (name, group["display_name"]))
         except AppError:
             irc.reply('There is no group "%s".' % name)
-    group = wrap(group, ['text'])
+
+    group = wrap(group, ["text"])
 
     def admins(self, irc, msg, args, name):
         """<group short name>
@@ -652,15 +680,15 @@ class Fedora(callbacks.Plugin):
 
         try:
             group = self.fasclient.group_members(name)
-            sponsors = ''
+            sponsors = ""
             for person in group:
-                if person['role_type'] == 'administrator':
-                    sponsors += person['username'] + ' '
-            irc.reply('Administrators for %s: %s' % (name, sponsors))
+                if person["role_type"] == "administrator":
+                    sponsors += person["username"] + " "
+            irc.reply("Administrators for %s: %s" % (name, sponsors))
         except AppError:
-            irc.reply('There is no group %s.' % name)
+            irc.reply("There is no group %s." % name)
 
-    admins = wrap(admins, ['text'])
+    admins = wrap(admins, ["text"])
 
     def sponsors(self, irc, msg, args, name):
         """<group short name>
@@ -669,17 +697,17 @@ class Fedora(callbacks.Plugin):
 
         try:
             group = self.fasclient.group_members(name)
-            sponsors = ''
+            sponsors = ""
             for person in group:
-                if person['role_type'] == 'sponsor':
-                    sponsors += person['username'] + ' '
-                elif person['role_type'] == 'administrator':
-                    sponsors += '@' + person['username'] + ' '
-            irc.reply('Sponsors for %s: %s' % (name, sponsors))
+                if person["role_type"] == "sponsor":
+                    sponsors += person["username"] + " "
+                elif person["role_type"] == "administrator":
+                    sponsors += "@" + person["username"] + " "
+            irc.reply("Sponsors for %s: %s" % (name, sponsors))
         except AppError:
-            irc.reply('There is no group %s.' % name)
+            irc.reply("There is no group %s." % name)
 
-    sponsors = wrap(sponsors, ['text'])
+    sponsors = wrap(sponsors, ["text"])
 
     def members(self, irc, msg, args, name):
         """<group short name>
@@ -687,19 +715,19 @@ class Fedora(callbacks.Plugin):
         Return a list of members of the specified group"""
         try:
             group = self.fasclient.group_members(name)
-            members = ''
+            members = ""
             for person in group:
-                if person['role_type'] == 'administrator':
-                    members += '@' + person['username'] + ' '
-                elif person['role_type'] == 'sponsor':
-                    members += '+' + person['username'] + ' '
+                if person["role_type"] == "administrator":
+                    members += "@" + person["username"] + " "
+                elif person["role_type"] == "sponsor":
+                    members += "+" + person["username"] + " "
                 else:
-                    members += person['username'] + ' '
-            irc.reply('Members of %s: %s' % (name, members))
+                    members += person["username"] + " "
+            irc.reply("Members of %s: %s" % (name, members))
         except AppError:
-            irc.reply('There is no group %s.' % name)
+            irc.reply("There is no group %s." % name)
 
-    members = wrap(members, ['text'])
+    members = wrap(members, ["text"])
 
     def showticket(self, irc, msg, args, baseurl, number):
         """<baseurl> <number>
@@ -713,13 +741,19 @@ class Fedora(callbacks.Plugin):
         try:
             parser.feed(text)
         except sgmllib.SGMLParseError:
-            irc.reply(format('Encountered a problem parsing %u', url))
+            irc.reply(format("Encountered a problem parsing %u", url))
         if parser.title:
-            irc.reply(utils.web.htmlToText(parser.title.strip()) + ' - ' + url)
+            irc.reply(utils.web.htmlToText(parser.title.strip()) + " - " + url)
         else:
-            irc.reply(format('That URL appears to have no HTML title ' +
-                             'within the first %i bytes.', size))
-    showticket = wrap(showticket, ['httpUrl', 'int'])
+            irc.reply(
+                format(
+                    "That URL appears to have no HTML title "
+                    + "within the first %i bytes.",
+                    size,
+                )
+            )
+
+    showticket = wrap(showticket, ["httpUrl", "int"])
 
     def swedish(self, irc, msg, args):
         """takes no arguments
@@ -729,9 +763,10 @@ class Fedora(callbacks.Plugin):
         # Import this here to avoid a circular import problem.
         from . import __version__
 
-        irc.reply(str('kwack kwack'))
-        irc.reply(str('bork bork bork'))
-        irc.reply(str('(supybot-fedora version %s)' % __version__))
+        irc.reply(str("kwack kwack"))
+        irc.reply(str("bork bork bork"))
+        irc.reply(str("(supybot-fedora version %s)" % __version__))
+
     swedish = wrap(swedish)
 
     def invalidCommand(self, irc, msg, tokens):
@@ -759,7 +794,7 @@ class Fedora(callbacks.Plugin):
         # We don't handle this if we've been addressed because invalidCommand
         # will handle it for us.  This prevents us from accessing the db twice
         # and therefore crashing.
-        if (msg.addressed or msg.repliedTo):
+        if msg.addressed or msg.repliedTo:
             return
 
         channel = msg.args[0]
@@ -772,37 +807,44 @@ class Fedora(callbacks.Plugin):
             words = line.split()
             for word in words:
                 if word[-2:] in self.karma_tokens:
-                    self._do_karma(
-                        irc, channel, agent, word, line, explicit=False)
+                    self._do_karma(irc, channel, agent, word, line, explicit=False)
 
-        blacklist = self.registryValue('naked_ping_channel_blacklist')
+        blacklist = self.registryValue("naked_ping_channel_blacklist")
         if irc.isChannel(channel) and not channel in blacklist:
             # Also, handle naked pings for
             # https://github.com/fedora-infra/supybot-fedora/issues/26
-            pattern = '\w* ?[:,] ?ping\W*$'
+            pattern = "\w* ?[:,] ?ping\W*$"
             if re.match(pattern, line):
-                admonition = self.registryValue('naked_ping_admonition')
+                admonition = self.registryValue("naked_ping_admonition")
                 irc.reply(admonition)
 
     def get_current_release(self):
-        url = 'https://pdc.fedoraproject.org/rest_api/v1/releases/'\
-              '?active=true&name=Fedora&release_type=ga&fields=version'\
-              '&ordering=version'
+        url = (
+            "https://pdc.fedoraproject.org/rest_api/v1/releases/"
+            "?active=true&name=Fedora&release_type=ga&fields=version"
+            "&ordering=version"
+        )
         response = requests.get(url)
         data = response.json()
-        return 'f' + str(max([int(x['version'])
-                              for x in data['results']
-                              if x['version'] != 'Rawhide']))
+        return "f" + str(
+            max(
+                [
+                    int(x["version"])
+                    for x in data["results"]
+                    if x["version"] != "Rawhide"
+                ]
+            )
+        )
 
     def open_karma_db(self):
         data = shelve.open(self.karma_db_path)
-        if 'backwards' in data:
+        if "backwards" in data:
             # This is the old style data.  convert it to the new form.
             release = self.get_current_release()
-            data['forwards-' + release] = copy.copy(data['forwards'])
-            data['backwards-' + release] = copy.copy(data['backwards'])
-            del data['forwards']
-            del data['backwards']
+            data["forwards-" + release] = copy.copy(data["forwards"])
+            data["backwards-" + release] = copy.copy(data["backwards"])
+            del data["forwards"]
+            del data["backwards"]
             data.sync()
         return data
 
@@ -816,10 +858,10 @@ class Fedora(callbacks.Plugin):
             if name in self.nickmap:
                 name = self.nickmap[name]
             release = self.get_current_release()
-            votes = data['backwards-' + release].get(name, {})
+            votes = data["backwards-" + release].get(name, {})
             alltime = []
             for key in data:
-                if 'backwards-' not in key:
+                if "backwards-" not in key:
                     continue
                 alltime.append(data[key].get(name, {}))
         finally:
@@ -836,13 +878,13 @@ class Fedora(callbacks.Plugin):
             alltime_dec += len([v for v in release.values() if v == -1])
         alltime_total = alltime_inc - alltime_dec
 
-        irc.reply("Karma for %s has been increased %i times and "
-                    "decreased %i times this release cycle for a "
-                    "total of %i (%i all time)" % (
-                    name, inc, dec, total, alltime_total))
+        irc.reply(
+            "Karma for %s has been increased %i times and "
+            "decreased %i times this release cycle for a "
+            "total of %i (%i all time)" % (name, inc, dec, total, alltime_total)
+        )
 
-
-    karma = wrap(karma, ['text'])
+    karma = wrap(karma, ["text"])
 
     def _do_karma(self, irc, channel, agent, recip, line, explicit=False):
         recip, direction = recip[:-2], recip[-2:]
@@ -853,22 +895,20 @@ class Fedora(callbacks.Plugin):
         recip = recip.strip().split()[-1]
 
         # Exclude 'c++', 'g++' or 'i++' (c,g,i), issue #30
-        if str(recip).lower() in ['c','g','i']:
+        if str(recip).lower() in ["c", "g", "i"]:
             return
 
-        increment = direction == '++' # If not, then it must be decrement
+        increment = direction == "++"  # If not, then it must be decrement
 
         # Check that these are FAS users
         if not agent in self.nickmap and not agent in self.users:
-            self.log.info(
-                "Saw %s from %s, but %s not in FAS" % (recip, agent, agent))
+            self.log.info("Saw %s from %s, but %s not in FAS" % (recip, agent, agent))
             if explicit:
                 irc.reply("Couldn't find %s in FAS" % agent)
             return
 
         if not recip in self.nickmap and not recip in self.users:
-            self.log.info(
-                "Saw %s from %s, but %s not in FAS" % (recip, agent, recip))
+            self.log.info("Saw %s from %s, but %s not in FAS" % (recip, agent, recip))
             if explicit:
                 irc.reply("Couldn't find %s in FAS" % recip)
             return
@@ -890,8 +930,8 @@ class Fedora(callbacks.Plugin):
         data = None
         try:
             data = shelve.open(self.karma_db_path)
-            fkey = 'forwards-' + release
-            bkey = 'backwards-' + release
+            fkey = "forwards-" + release
+            bkey = "backwards-" + release
             if fkey not in data:
                 data[fkey] = {}
 
@@ -913,7 +953,7 @@ class Fedora(callbacks.Plugin):
             if data[fkey][agent].get(recip) == vote:
                 ## People found this response annoying.
                 ## https://github.com/fedora-infra/supybot-fedora/issues/25
-                #irc.reply(
+                # irc.reply(
                 #    "You have already given %i karma to %s" % (vote, recip))
                 return
 
@@ -930,14 +970,14 @@ class Fedora(callbacks.Plugin):
 
             total_all_time = 0
             for key in data:
-                if 'backwards-' not in key:
+                if "backwards-" not in key:
                     continue
                 total_all_time += sum(data[key].get(recip, {}).values())
         finally:
             if data:
                 data.close()
 
-        #fedmsg.publish(
+        # fedmsg.publish(
         #    name="supybot.%s" % socket.gethostname(),
         #    modname="irc", topic="karma",
         #    msg={
@@ -950,14 +990,13 @@ class Fedora(callbacks.Plugin):
         #        'line': line,
         #        'release': release,
         #    },
-        #)
+        # )
 
-        url = self.registryValue('karma.url')
+        url = self.registryValue("karma.url")
         irc.reply(
-            'Karma for %s changed to %r '
-            '(for the current release cycle):  %s' % (
-                recip, total_this_release, url))
-
+            "Karma for %s changed to %r "
+            "(for the current release cycle):  %s" % (recip, total_this_release, url)
+        )
 
     def wikilink(self, irc, msg, args, name):
         """<username>
@@ -971,26 +1010,29 @@ class Fedora(callbacks.Plugin):
         if not person:
             irc.reply('User "%s" doesn\'t exist' % name)
             return
-        string = "[[User:%s|%s]]" % (person["username"],
-                                     person["human_name"] or '')
-        irc.reply(string.encode('utf-8'))
-    wikilink = wrap(wikilink, ['text'])
+        string = "[[User:%s|%s]]" % (person["username"], person["human_name"] or "")
+        irc.reply(string.encode("utf-8"))
+
+    wikilink = wrap(wikilink, ["text"])
 
     def mirroradmins(self, irc, msg, args, hostname):
         """<hostname>
 
         Return MirrorManager list of FAS usernames which administer <hostname>.
         <hostname> must be the FQDN of the host."""
-        url = ("https://admin.fedoraproject.org/mirrormanager/api/"
-               "mirroradmins?name=" + hostname)
+        url = (
+            "https://admin.fedoraproject.org/mirrormanager/api/"
+            "mirroradmins?name=" + hostname
+        )
         result = self._load_json(url)
-        if not 'admins' in result:
-            irc.reply(result.get('message', 'Something went wrong'))
+        if not "admins" in result:
+            irc.reply(result.get("message", "Something went wrong"))
             return
-        string = 'Mirror Admins of %s: ' % hostname
-        string += ' '.join(result['admins'])
-        irc.reply(string.encode('utf-8'))
-    mirroradmins = wrap(mirroradmins, ['text'])
+        string = "Mirror Admins of %s: " % hostname
+        string += " ".join(result["admins"])
+        irc.reply(string.encode("utf-8"))
+
+    mirroradmins = wrap(mirroradmins, ["text"])
 
     def pushduty(self, irc, msg, args):
         """
@@ -999,24 +1041,24 @@ class Fedora(callbacks.Plugin):
         """
 
         def get_persons():
-            for meeting in self._meetings_for('release-engineering'):
-                yield meeting['meeting_name']
+            for meeting in self._meetings_for("release-engineering"):
+                yield meeting["meeting_name"]
 
         persons = list(get_persons())
 
-        url = "https://apps.fedoraproject.org/" + \
-            "calendar/release-engineering/"
+        url = "https://apps.fedoraproject.org/calendar/release-engineering/"
 
         if not persons:
             response = "Nobody is listed as being on push duty right now..."
-            irc.reply(response.encode('utf-8'))
-            irc.reply("- " + url.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
+            irc.reply("- " + url.encode("utf-8"))
             return
 
         persons = ", ".join(persons)
         response = "The following people are on push duty: %s" % persons
-        irc.reply(response.encode('utf-8'))
-        irc.reply("- " + url.encode('utf-8'))
+        irc.reply(response.encode("utf-8"))
+        irc.reply("- " + url.encode("utf-8"))
+
     pushduty = wrap(pushduty)
 
     def vacation(self, irc, msg, args):
@@ -1026,51 +1068,58 @@ class Fedora(callbacks.Plugin):
         """
 
         def get_persons():
-            for meeting in self._meetings_for('vacation'):
-                for manager in meeting['meeting_manager']:
+            for meeting in self._meetings_for("vacation"):
+                for manager in meeting["meeting_manager"]:
                     yield manager
 
         persons = list(get_persons())
 
         if not persons:
             response = "Nobody is listed as being on vacation right now..."
-            irc.reply(response.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
             url = "https://apps.fedoraproject.org/calendar/vacation/"
-            irc.reply("- " + url.encode('utf-8'))
+            irc.reply("- " + url.encode("utf-8"))
             return
 
         persons = ", ".join(persons)
         response = "The following people are on vacation: %s" % persons
-        irc.reply(response.encode('utf-8'))
+        irc.reply(response.encode("utf-8"))
         url = "https://apps.fedoraproject.org/calendar/vacation/"
-        irc.reply("- " + url.encode('utf-8'))
+        irc.reply("- " + url.encode("utf-8"))
+
     vacation = wrap(vacation)
 
     def nextmeetings(self, irc, msg, args):
         """
         Return the next meetings scheduled for any channel(s).
         """
-        irc.reply('One moment, please...  Looking up the channel list.')
-        url = 'https://apps.fedoraproject.org/calendar/api/locations/'
-        locations = requests.get(url).json()['locations']
-        meetings = sorted(chain(*[
-            self._future_meetings(location)
-            for location in locations
-            if 'irc.freenode.net' in location
-        ]), key=itemgetter(0))
+        irc.reply("One moment, please...  Looking up the channel list.")
+        url = "https://apps.fedoraproject.org/calendar/api/locations/"
+        locations = requests.get(url).json()["locations"]
+        meetings = sorted(
+            chain(
+                *[
+                    self._future_meetings(location)
+                    for location in locations
+                    if "irc.freenode.net" in location
+                ]
+            ),
+            key=itemgetter(0),
+        )
 
         if not meetings:
             response = "There are no meetings scheduled at all."
-            irc.reply(response.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
             return
 
         for date, meeting in meetings[:5]:
             response = "In #%s is %s (starting %s)" % (
-                meeting['meeting_location'].split('@')[0].strip(),
-                meeting['meeting_name'],
+                meeting["meeting_location"].split("@")[0].strip(),
+                meeting["meeting_name"],
                 arrow.get(date).humanize(),
             )
-            irc.reply(response.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
+
     nextmeetings = wrap(nextmeetings, [])
 
     def nextmeeting(self, irc, msg, args, channel):
@@ -1079,36 +1128,36 @@ class Fedora(callbacks.Plugin):
         Return the next meeting scheduled for a particular channel.
         """
 
-        channel = channel.strip('#').split('@')[0]
+        channel = channel.strip("#").split("@")[0]
         meetings = sorted(self._future_meetings(channel), key=itemgetter(0))
 
         if not meetings:
             response = "There are no meetings scheduled for #%s." % channel
-            irc.reply(response.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
             return
 
         for date, meeting in meetings[:3]:
             response = "In #%s is %s (starting %s)" % (
                 channel,
-                meeting['meeting_name'],
+                meeting["meeting_name"],
                 arrow.get(date).humanize(),
             )
-            irc.reply(response.encode('utf-8'))
+            irc.reply(response.encode("utf-8"))
         base = "https://apps.fedoraproject.org/calendar/location/"
         url = base + urllib.parse.quote("%s@irc.freenode.net/" % channel)
-        irc.reply("- " + url.encode('utf-8'))
-    nextmeeting = wrap(nextmeeting, ['text'])
+        irc.reply("- " + url.encode("utf-8"))
+
+    nextmeeting = wrap(nextmeeting, ["text"])
 
     @staticmethod
     def _future_meetings(location):
-        if not location.endswith('@irc.freenode.net'):
-            location = '%s@irc.freenode.net' % location
+        if not location.endswith("@irc.freenode.net"):
+            location = "%s@irc.freenode.net" % location
         meetings = Fedora._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
         for meeting in meetings:
-            string = "%s %s" % (meeting['meeting_date'],
-                                meeting['meeting_time_start'])
+            string = "%s %s" % (meeting["meeting_date"], meeting["meeting_time_start"])
             dt = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now < dt:
@@ -1120,11 +1169,12 @@ class Fedora(callbacks.Plugin):
         now = datetime.datetime.utcnow()
 
         for meeting in meetings:
-            string = "%s %s" % (meeting['meeting_date'],
-                                meeting['meeting_time_start'])
+            string = "%s %s" % (meeting["meeting_date"], meeting["meeting_time_start"])
             start = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
-            string = "%s %s" % (meeting['meeting_date_end'],
-                                meeting['meeting_time_stop'])
+            string = "%s %s" % (
+                meeting["meeting_date_end"],
+                meeting["meeting_time_stop"],
+            )
             end = datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
 
             if now >= start and now <= end:
@@ -1132,8 +1182,8 @@ class Fedora(callbacks.Plugin):
 
     @staticmethod
     def _query_fedocal(**kwargs):
-        url = 'https://apps.fedoraproject.org/calendar/api/meetings'
-        return requests.get(url, params=kwargs).json()['meetings']
+        url = "https://apps.fedoraproject.org/calendar/api/meetings"
+        return requests.get(url, params=kwargs).json()["meetings"]
 
     def badges(self, irc, msg, args, name):
         """<username>
@@ -1143,15 +1193,16 @@ class Fedora(callbacks.Plugin):
         url = "https://badges.fedoraproject.org/user/" + name
         d = requests.get(url + "/json").json()
 
-        if 'error' in d:
-            response = d['error']
+        if "error" in d:
+            response = d["error"]
         else:
             template = "{name} has unlocked {n} Fedora Badges:  {url}"
-            n = len(d['assertions'])
+            n = len(d["assertions"])
             response = template.format(name=name, url=url, n=n)
 
-        irc.reply(response.encode('utf-8'))
-    badges = wrap(badges, ['text'])
+        irc.reply(response.encode("utf-8"))
+
+    badges = wrap(badges, ["text"])
 
     def quote(self, irc, msg, args, arguments):
         """<SYMBOL> [daily, weekly, monthly, quarterly]
@@ -1164,7 +1215,7 @@ class Fedora(callbacks.Plugin):
         # object is the thing to use... except its weird.
         tokens = arguments.split(None, 1)
         if len(tokens) == 1:
-            symbol, frame = tokens[0], 'daily'
+            symbol, frame = tokens[0], "daily"
         else:
             symbol, frame = tokens
 
@@ -1178,35 +1229,39 @@ class Fedora(callbacks.Plugin):
         # Why all this trouble?  Well, as new things get added to the fedmsg
         # bus, we don't want to have keep coming back here and modifying this
         # code.  Hopefully this dance will at least partially future-proof us.
-        symbols = dict([
-            (processor.__name__.lower(), processor.__name__[:3].upper())
-            for processor in fedmsg.meta.processors
-        ])
-        symbols.update({
-            'fedoratagger': 'TAG',
-            'fedbadges': 'BDG',
-            'buildsys': 'KOJ',
-            'pkgdb': 'PKG',
-            'meetbot': 'MTB',
-            'planet': 'PLN',
-            'trac': 'TRC',
-            'mailman': 'MM3',
-        })
+        symbols = dict(
+            [
+                (processor.__name__.lower(), processor.__name__[:3].upper())
+                for processor in fedmsg.meta.processors
+            ]
+        )
+        symbols.update(
+            {
+                "fedoratagger": "TAG",
+                "fedbadges": "BDG",
+                "buildsys": "KOJ",
+                "pkgdb": "PKG",
+                "meetbot": "MTB",
+                "planet": "PLN",
+                "trac": "TRC",
+                "mailman": "MM3",
+            }
+        )
 
         # Now invert the dict so we can lookup the argued symbol.
         # Yes, this is vulnerable to collisions.
         symbols = dict([(sym, name) for name, sym in symbols.items()])
 
         # These aren't user-facing topics, so drop 'em.
-        del symbols['LOG']
-        del symbols['UNH']
-        del symbols['ANN']  # And this one is unused...
+        del symbols["LOG"]
+        del symbols["UNH"]
+        del symbols["ANN"]  # And this one is unused...
 
-        key_fmt = lambda d: ', '.join(sorted(d.keys()))
+        key_fmt = lambda d: ", ".join(sorted(d.keys()))
 
         if symbol not in symbols:
             response = "No such symbol %r.  Try one of %s"
-            irc.reply((response % (symbol, key_fmt(symbols))).encode('utf-8'))
+            irc.reply((response % (symbol, key_fmt(symbols))).encode("utf-8"))
             return
 
         # Now, build another lookup of our various timeframes.
@@ -1219,7 +1274,7 @@ class Fedora(callbacks.Plugin):
 
         if frame not in frames:
             response = "No such timeframe %r.  Try one of %s"
-            irc.reply((response % (frame, key_fmt(frames))).encode('utf-8'))
+            irc.reply((response % (frame, key_fmt(frames))).encode("utf-8"))
             return
 
         category = [symbols[symbol]]
@@ -1234,10 +1289,14 @@ class Fedora(callbacks.Plugin):
 
         # Do this async for superfast datagrepper queries.
         tpool = ThreadPool()
-        batched_values = tpool.map(datagrepper_query, [
-            dict(start=x, end=y, category=category)
-            for x, y in Utils.daterange(t1, t2, SPARKLINE_RESOLUTION)
-        ] + [query1, query2])
+        batched_values = tpool.map(
+            datagrepper_query,
+            [
+                dict(start=x, end=y, category=category)
+                for x, y in Utils.daterange(t1, t2, SPARKLINE_RESOLUTION)
+            ]
+            + [query1, query2],
+        )
 
         count2 = batched_values.pop()
         count1 = batched_values.pop()
@@ -1252,10 +1311,7 @@ class Fedora(callbacks.Plugin):
             quarterly="the 3 months preceding these past three months",
         )
         phrases = dict(
-            daily="24 hours",
-            weekly="week",
-            monthly="month",
-            quarterly="3 months",
+            daily="24 hours", weekly="week", monthly="month", quarterly="3 months",
         )
 
         if count1 and count2:
@@ -1264,7 +1320,7 @@ class Fedora(callbacks.Plugin):
             # If the older of the two time periods had zero messages, but there
             # are some in the more current period.. well, that's an infinite
             # percent increase.
-            percent = float('inf')
+            percent = float("inf")
         elif not count1 and not count2:
             # If counts are zero for both periods, then the change is 0%.
             percent = 0
@@ -1273,7 +1329,7 @@ class Fedora(callbacks.Plugin):
             # none in the current... then that's a 100% drop off.
             percent = -100
 
-        sign = lambda value: value >= 0 and '+' or '-'
+        sign = lambda value: value >= 0 and "+" or "-"
 
         template = "{sym}, {name} {sign}{percent:.2f}% over {phrase}"
         response = template.format(
@@ -1283,18 +1339,16 @@ class Fedora(callbacks.Plugin):
             percent=abs(percent),
             phrase=yester_phrases[frame],
         )
-        irc.reply(response.encode('utf-8'))
+        irc.reply(response.encode("utf-8"))
 
         # Now, make a graph out of it.
         sparkline = Utils.sparkline(sparkline_values)
 
         template = "     {sparkline}  ⤆ over {phrase}"
         response = template.format(
-            sym=symbol,
-            sparkline=sparkline,
-            phrase=phrases[frame]
+            sym=symbol, sparkline=sparkline, phrase=phrases[frame]
         )
-        irc.reply(response.encode('utf-8'))
+        irc.reply(response.encode("utf-8"))
 
         to_utc = lambda t: time.gmtime(time.mktime(t.timetuple()))
         # And a final line for "x-axis tics"
@@ -1303,8 +1357,9 @@ class Fedora(callbacks.Plugin):
         padding = " " * (SPARKLINE_RESOLUTION - len(t1_fmt) - 3)
         template = "     ↑ {t1}{padding}↑ {t2}"
         response = template.format(t1=t1_fmt, t2=t2_fmt, padding=padding)
-        irc.reply(response.encode('utf-8'))
-    quote = wrap(quote, ['text'])
+        irc.reply(response.encode("utf-8"))
+
+    quote = wrap(quote, ["text"])
 
 
 class Utils(object):
@@ -1312,7 +1367,7 @@ class Utils(object):
 
     @classmethod
     def sparkline(cls, values):
-        bar = '▁▂▃▄▅▆▇█'
+        bar = "▁▂▃▄▅▆▇█"
         barcount = len(bar) - 1
         values = [float(v) for v in values]
         mn, mx = min(values), max(values)
@@ -1323,7 +1378,7 @@ class Utils(object):
         else:
             indices = [int((n - mn) / extent * barcount) for n in values]
 
-        unicode_sparkline = ''.join([bar[i] for i in indices])
+        unicode_sparkline = "".join([bar[i] for i in indices])
         return unicode_sparkline
 
     @classmethod

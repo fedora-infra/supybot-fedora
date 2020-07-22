@@ -40,22 +40,25 @@ import importlib
 __version__ = "0.3.4"
 
 # Replace this with an appropriate author or supybot.Author instance.
-__author__ = supybot.Author('Mike McGrath', 'mmcgrath', 'mmcgrath@redhat.com')
+__author__ = supybot.Author("Mike McGrath", "mmcgrath", "mmcgrath@redhat.com")
 
 # This is a dictionary mapping supybot.Author instances to lists of
 # contributions.
 __contributors__ = {
-    supybot.Author('Ian Weller', 'ianweller', 'ianweller@gmail.com'):
-    ["secondary maintainer and code sanitizer"],
-    supybot.Author('Ralph Bean', 'threebean', 'ralph@fedoraproject.org'):
-    ["tertiary maintainer and reluctant heir"],
+    supybot.Author("Ian Weller", "ianweller", "ianweller@gmail.com"): [
+        "secondary maintainer and code sanitizer"
+    ],
+    supybot.Author("Ralph Bean", "threebean", "ralph@fedoraproject.org"): [
+        "tertiary maintainer and reluctant heir"
+    ],
 }
 
 # This is a url where the most recent plugin package can be downloaded.
-__url__ = ''  # 'http://supybot.com/Members/yourname/Fedora/download'
+__url__ = ""  # 'http://supybot.com/Members/yourname/Fedora/download'
 
 from . import config
 from . import plugin
+
 importlib.reload(plugin)  # In case we're being reloaded.
 # Add more reloads here if you add third-party modules and want them to be
 # reloaded when this plugin is reloaded.  Don't forget to import them as well!
