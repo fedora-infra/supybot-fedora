@@ -54,8 +54,8 @@ from fedora.client.fas2 import AccountSystem
 
 from kitchen.text.converters import to_unicode
 
-import fedmsg.config
-import fedmsg.meta
+#import fedmsg.config
+#import fedmsg.meta
 
 import simplejson
 import urllib.request, urllib.parse, urllib.error
@@ -182,8 +182,8 @@ class Fedora(callbacks.Plugin):
         self._refresh()
 
         # Pull in /etc/fedmsg.d/ so we can build the fedmsg.meta processors.
-        fm_config = fedmsg.config.load_config()
-        fedmsg.meta.make_processors(**fm_config)
+        #fm_config = fedmsg.config.load_config()
+        #fedmsg.meta.make_processors(**fm_config)
 
     def _refresh(self):
         timeout = socket.getdefaulttimeout()
@@ -931,20 +931,20 @@ class Fedora(callbacks.Plugin):
             if data:
                 data.close()
 
-        fedmsg.publish(
-            name="supybot.%s" % socket.gethostname(),
-            modname="irc", topic="karma",
-            msg={
-                'agent': agent,
-                'recipient': recip,
-                'total': total_all_time,  # The badge rules use this value
-                'total_this_release': total_this_release,
-                'vote': vote,
-                'channel': channel,
-                'line': line,
-                'release': release,
-            },
-        )
+        #fedmsg.publish(
+        #    name="supybot.%s" % socket.gethostname(),
+        #    modname="irc", topic="karma",
+        #    msg={
+        #        'agent': agent,
+        #        'recipient': recip,
+        #        'total': total_all_time,  # The badge rules use this value
+        #        'total_this_release': total_this_release,
+        #        'vote': vote,
+        #        'channel': channel,
+        #        'line': line,
+        #        'release': release,
+        #    },
+        #)
 
         url = self.registryValue('karma.url')
         irc.reply(

@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "supybot-fedora"
+version = "0.3.5"
+description = "A Lemnoria (supybot) plugin for various Fedora actions"
+
+license = "BSD-3-Clause"
+
+authors = [
+  "Mike McGrath <mmcgrath@redhat.com>",
+  "Fedora Infrastructure <admin@fedoraproject.org>"
+]
+
+readme = 'README.md'  # Markdown files are supported
+
+repository = "https://github.com/fedora-infra/supybot-fedora"
+homepage = "https://github.com/fedora-infra/supybot-fedora"
+
+classifiers = [
+    'Environment :: Plugins',
+    'Programming Language :: Python :: 3',
+    'Topic :: Communications :: Chat',
+]
+
+include = [
+    "tox.ini",
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+python-fedora = "^1.0.0"
+limnoria = "^2020.07.01"
+requests = "^2.24.0"
+arrow = "^0.15.7"
+packagedb-cli = "^2.14.1"
+pyyaml = "^5.3.1"
+# fedmsg = "^1.1.2"
+simplejson = "^3.17.2"
+pytz = "^2020.1"
+sgmllib3k = "^1.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.3"
+pytest-cov = "^2.8"
+sphinx = "^3.0"
+mock = "^4.0"
+pytest-vcr = "^1.0"
+liccheck = "^0.4.2"
+bandit = "^1.6"
+black = {version = "^19.10b0", allow-prereleases = true}
+flake8 = "^3.7"
+pytest-mock = "^3.0.0"
+
+[tool.poetry.plugins."limnoria.plugins"]
+"Fedora" = "supybot_fedora"
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"
