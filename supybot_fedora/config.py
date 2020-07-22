@@ -36,64 +36,87 @@ def configure(advanced):
     # a bool that specifies whether the user identified himself as an advanced
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
-    conf.registerPlugin('Fedora', True)
+    conf.registerPlugin("Fedora", True)
 
 
-Fedora = conf.registerPlugin('Fedora')
+Fedora = conf.registerPlugin("Fedora")
 conf.registerGlobalValue(
-    Fedora, 'naked_ping_admonition',
-    registry.String('https://blogs.gnome.org/markmc/2014/02/20/naked-pings/',
-                    """Response to people who use a naked ping in channel."""))
+    Fedora,
+    "naked_ping_admonition",
+    registry.String(
+        "https://blogs.gnome.org/markmc/2014/02/20/naked-pings/",
+        """Response to people who use a naked ping in channel.""",
+    ),
+)
 conf.registerGlobalValue(
-    Fedora, 'naked_ping_channel_blacklist',
+    Fedora,
+    "naked_ping_channel_blacklist",
     registry.CommaSeparatedListOfStrings(
-        '', 'List of channels where not to admonish naked pings'))
+        "", "List of channels where not to admonish naked pings"
+    ),
+)
 
 
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
-conf.registerGroup(Fedora, 'fas')
+conf.registerGroup(Fedora, "fas")
 conf.registerGlobalValue(
-    Fedora.fas, 'url',
-    registry.String('https://admin.fedoraproject.org/accounts/',
-                    """URL for the Fedora Account System"""))
+    Fedora.fas,
+    "url",
+    registry.String(
+        "https://admin.fedoraproject.org/accounts/",
+        """URL for the Fedora Account System""",
+    ),
+)
 conf.registerGlobalValue(
-    Fedora.fas, 'username',
-    registry.String('', """Username for the Fedora Account System""",
-                    private=True))
+    Fedora.fas,
+    "username",
+    registry.String("", """Username for the Fedora Account System""", private=True),
+)
 conf.registerGlobalValue(
-    Fedora.fas, 'password',
-    registry.String('', """Password for the Fedora Account System""",
-                    private=True))
+    Fedora.fas,
+    "password",
+    registry.String("", """Password for the Fedora Account System""", private=True),
+)
 
-conf.registerGroup(Fedora, 'github')
+conf.registerGroup(Fedora, "github")
 conf.registerGlobalValue(
-    Fedora.github, 'oauth_token',
-    registry.String('', """OAuth Token for the GitHub""",
-                    private=True))
+    Fedora.github,
+    "oauth_token",
+    registry.String("", """OAuth Token for the GitHub""", private=True),
+)
 
 
-conf.registerGroup(Fedora, 'karma')
+conf.registerGroup(Fedora, "karma")
 conf.registerGlobalValue(
-    Fedora.karma, 'db_path',
-    registry.String('/var/tmp/supybot-karma.db',
-                    """Path to a karma db on disk"""))
+    Fedora.karma,
+    "db_path",
+    registry.String("/var/tmp/supybot-karma.db", """Path to a karma db on disk"""),
+)
 conf.registerGlobalValue(
-    Fedora.karma, 'url',
-    registry.String('https://badges.fedoraproject.org/badge/macaron-cookie-i',
-                    """URL to link people to about karma."""))
+    Fedora.karma,
+    "url",
+    registry.String(
+        "https://badges.fedoraproject.org/badge/macaron-cookie-i",
+        """URL to link people to about karma.""",
+    ),
+)
 # Here, 'unaddressed' commands are ones that are not directly addressed to the
 # supybot nick.  I.e., if this is set to False, then you must say
 #   'zodbot: pingou++'
 # If it it set to True, then you may say
 #   'pingou++'
 conf.registerGlobalValue(
-    Fedora.karma, 'unaddressed',
-    registry.Boolean(True, "Allow unaddressed karma commands"))
+    Fedora.karma,
+    "unaddressed",
+    registry.Boolean(True, "Allow unaddressed karma commands"),
+)
 conf.registerGlobalValue(
-    Fedora.karma, 'allow_negative',
-    registry.Boolean(True, "Allow negative karma to be given"))
+    Fedora.karma,
+    "allow_negative",
+    registry.Boolean(True, "Allow negative karma to be given"),
+)
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
