@@ -1,7 +1,7 @@
 ---
 - name: Install RPM packages
   dnf:
-      name: ['limnoria', 'ngircd', 'weechat', 'git', 'vim', 'poetry']
+      name: ['limnoria', 'ngircd', 'weechat', 'git', 'vim', 'poetry', 'krb5-workstation', 'krb5-devel', 'gcc']
       state: present
 
 - name: set ngircd config
