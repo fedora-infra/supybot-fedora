@@ -56,6 +56,12 @@ conf.registerGlobalValue(
     ),
 )
 
+conf.registerGlobalValue(
+    Fedora,
+    "use_fasjson",
+    registry.Boolean(True, "Use FasJSON for accounts data rather than FAS"),
+)
+
 
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
@@ -78,6 +84,15 @@ conf.registerGlobalValue(
     Fedora.fas,
     "password",
     registry.String("", """Password for the Fedora Account System""", private=True),
+)
+
+conf.registerGroup(Fedora, "fasjson")
+conf.registerGlobalValue(
+    Fedora.fasjson,
+    "url",
+    registry.String(
+        "http://fasjson.example.test/fasjson", """URL for the FASJSON API""",
+    ),
 )
 
 conf.registerGroup(Fedora, "github")
