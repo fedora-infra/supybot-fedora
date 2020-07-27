@@ -1,7 +1,7 @@
 ---
 - name: Install RPM packages
   dnf:
-      name: ['limnoria', 'ngircd', 'weechat', 'git', 'vim', 'poetry', 'krb5-workstation', 'krb5-devel', 'gcc']
+      name: ['limnoria', 'ngircd', 'weechat', 'git', 'vim', 'poetry', 'krb5-workstation', 'krb5-devel', 'gcc', 'gssproxy', 'ipa-client']
       state: present
 
 - name: set ngircd config
@@ -22,6 +22,46 @@
   become_user: vagrant
   args:
     chdir: /vagrant/
+
+- name: Uninstall any old clients
+  shell: ipa-client-install --uninstall --unattended
+  ignore_errors: yes
+
+- name: Enroll system as IPA client
+  shell: ipa-client-install --hostname irc.supybot.test --domain example.test --realm EXAMPLE.TEST --server ipa.example.test -p admin -w adminPassw0rd! -U -N --force-join
+
+- name: kinit
+  shell: echo "adminPassw0rd!" | kinit admin@EXAMPLE.TEST
+
+- name: Create the service in IPA
+  command: ipa service-add SUPYBOT/irc.supybot.test
+
+- name: Get service keytab for SUPYBOT
+  shell: ipa-getkeytab -p SUPYBOT/irc.supybot.test@EXAMPLE.TEST -k /var/lib/gssproxy/supybot.keytab
+  args:
+    creates: /var/lib/gssproxy/supybot.keytab
+
+- name: Set the correct permissions on keytab
+  file:
+    path: /var/lib/gssproxy/supybot.keytab
+    owner: root
+    group: root
+    mode: 0640
+
+- name: Copy gssproxy conf
+  copy:
+    src: gssproxy-supybot.conf
+    dest: /etc/gssproxy/98-supybot.conf
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Enable and restart GSSProxy
+  systemd:
+    state: restarted
+    name: gssproxy
+    enabled: yes
+    daemon_reload: yes
 
 - name: copy supybot config
   copy:
