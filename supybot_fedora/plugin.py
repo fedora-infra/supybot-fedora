@@ -52,6 +52,8 @@ from supybot.commands import wrap
 from fedora.client import AppError, AuthError
 from fedora.client.fas2 import AccountSystem
 
+import fasjson_client
+
 from kitchen.text.converters import to_unicode
 
 # import fedmsg.config
@@ -168,7 +170,9 @@ class Fedora(callbacks.Plugin):
 
         # caches, automatically downloaded on __init__, manually refreshed on
         # .refresh
-        self.userlist = None
+        self.users = None
+        self.faslist = None
+        self.nickmap = None
 
         # To get the information, we need a username and password to FAS.
         # DO NOT COMMIT YOUR USERNAME AND PASSWORD TO THE PUBLIC REPOSITORY!
@@ -179,6 +183,19 @@ class Fedora(callbacks.Plugin):
         self.fasclient = AccountSystem(
             self.fasurl, username=self.username, password=self.password
         )
+
+        # Use FASJSON
+        if self.registryValue("use_fasjson"):
+            try:
+                self.client = fasjson_client.Client(
+                    url=self.registryValue("fasjson.url"),
+                )
+            except fasjson_client.errors.ClientSetupError as e:
+                self.log.error(
+                    "Something went wrong setting up "
+                    "fasjson client with error: %s" % e
+                )
+                return {}
 
         # URLs
         # self.url = {}
@@ -195,46 +212,74 @@ class Fedora(callbacks.Plugin):
         # fedmsg.meta.make_processors(**fm_config)
 
     def _refresh(self):
-        timeout = socket.getdefaulttimeout()
-        socket.setdefaulttimeout(None)
         self.log.info("Downloading user data")
-        try:
-            request = self.fasclient.send_request(
-                "/user/list", req_params={"search": "*"}, auth=True, timeout=240
-            )
-            users = request["people"] + request["unapproved_people"]
-            del request
-        except AuthError:
-            self.log.info("Error Authorizing to FAS")
-            users = []
 
-        self.log.info("Caching necessary user data")
-        self.users = {}
-        self.faslist = {}
-        self.nickmap = {}
-        for user in users:
-            name = user["username"]
-            self.users[name] = {}
-            self.users[name]["id"] = user["id"]
-            key = " ".join(
-                [
+        if self.registryValue("use_fasjson"):
+            self.log.info("Caching necessary user data")
+            self.users = []
+            self.faslist = {}
+            self.nickmap = {}
+            users = list(self.client.list_all_entities("users"))
+            for user in users:
+                name = user["username"]
+                self.users.append(name)
+                key = " ".join(
+                    [
+                        user["username"],
+                        user["emails"][0],
+                        user["human_name"] or "",
+                        user["ircnicks"][0] or "",
+                    ]
+                )
+                value = "%s '%s' <%s>" % (
                     user["username"],
-                    user["email"] or "",
                     user["human_name"] or "",
-                    user["ircnick"] or "",
-                ]
-            )
-            key = key.lower()
-            value = "%s '%s' <%s>" % (
-                user["username"],
-                user["human_name"] or "",
-                user["email"] or "",
-            )
-            self.faslist[key] = value
-            if user["ircnick"]:
-                self.nickmap[user["ircnick"]] = name
+                    user["emails"][0] or "",
+                )
+                self.faslist[key] = value
+                for nick in user.get("ircnicks", []):
+                    self.nickmap[nick] = name
+        else:
+            # leave this untouched for now, will remove when FAS finally disappears
+            timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(None)
+            try:
+                request = self.fasclient.send_request(
+                    "/user/list", req_params={"search": "*"}, auth=True, timeout=240
+                )
+                users = request["people"] + request["unapproved_people"]
+                del request
+            except AuthError:
+                self.log.info("Error Authorizing to FAS")
+                users = []
 
-        socket.setdefaulttimeout(timeout)
+            self.log.info("Caching necessary user data")
+            self.users = {}
+            self.faslist = {}
+            self.nickmap = {}
+            for user in users:
+                name = user["username"]
+                self.users[name] = {}
+                self.users[name]["id"] = user["id"]
+                key = " ".join(
+                    [
+                        user["username"],
+                        user["email"] or "",
+                        user["human_name"] or "",
+                        user["ircnick"] or "",
+                    ]
+                )
+                key = key.lower()
+                value = "%s '%s' <%s>" % (
+                    user["username"],
+                    user["human_name"] or "",
+                    user["email"] or "",
+                )
+                self.faslist[key] = value
+                if user["ircnick"]:
+                    self.nickmap[user["ircnick"]] = name
+
+            socket.setdefaulttimeout(timeout)
 
     def refresh(self, irc, msg, args):
         """takes no arguments
