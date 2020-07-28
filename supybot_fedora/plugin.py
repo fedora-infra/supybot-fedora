@@ -187,7 +187,7 @@ class Fedora(callbacks.Plugin):
         # Use FASJSON
         if self.registryValue("use_fasjson"):
             try:
-                self.client = fasjson_client.Client(
+                self.fasjsonclient = fasjson_client.Client(
                     url=self.registryValue("fasjson.url"),
                 )
             except fasjson_client.errors.ClientSetupError as e:
@@ -219,8 +219,7 @@ class Fedora(callbacks.Plugin):
             self.users = []
             self.faslist = {}
             self.nickmap = {}
-            users = list(self.client.list_all_entities("users"))
-            for user in users:
+            for user in self.fasjsonclient.list_all_entities("users"):
                 name = user["username"]
                 self.users.append(name)
                 key = " ".join(
@@ -280,6 +279,35 @@ class Fedora(callbacks.Plugin):
                     self.nickmap[user["ircnick"]] = name
 
             socket.setdefaulttimeout(timeout)
+
+    def _get_person_by_username(self, irc, username):
+        """looks up a user by the username"""
+        if self.registryValue("use_fasjson"):
+            try:
+                person = self.fasjsonclient.get_user(username=username).result
+            except fasjson_client.errors.APIError as e:
+                if e.code == 404:
+                    irc.reply(f"Sorry, but user '{username}' does not exist")
+                    return
+                else:
+                    irc.reply("Something blew up, please try again")
+                    self.log.error(e)
+                    return
+        else:
+            try:
+                person = self.fasclient.person_by_username(username)
+                # convert to the newer FASJSON way for now
+                if person.get("email"):
+                    person["emails"] = [person["email"]]
+            except Exception as e:
+                irc.reply("Something blew up, please try again")
+                self.log.error(e)
+                return
+            if not person:
+                irc.reply(f"Sorry, but user '{username}' does not exist")
+                return
+
+        return person
 
     def refresh(self, irc, msg, args):
         """takes no arguments
@@ -561,16 +589,14 @@ class Fedora(callbacks.Plugin):
 
         Return brief information about a Fedora Account System username. Useful
         for things like meeting roll call and calling attention to yourself."""
-        try:
-            person = self.fasclient.person_by_username(name)
-        except Exception:
-            irc.reply("Something blew up, please try again")
-            return
+
+        person = self._get_person_by_username(irc, name)
+
         if not person:
-            irc.reply("Sorry, but you don't exist")
             return
+
         irc.reply(
-            ("%(username)s '%(human_name)s' <%(email)s>" % person).encode("utf-8")
+            f"{person['username']} '{person['human_name']}' <{person['emails'][0]}>"
         )
 
     hellomynameis = wrap(hellomynameis, ["text"])
@@ -579,15 +605,13 @@ class Fedora(callbacks.Plugin):
         """<username>
 
         Will the real Slim Shady please stand up?"""
-        try:
-            person = self.fasclient.person_by_username(name)
-        except Exception:
-            irc.reply("Something blew up, please try again")
-            return
+
+        person = self._get_person_by_username(irc, name)
+
         if not person:
-            irc.reply("Sorry, but you don't exist")
             return
-        irc.reply(("%(username)s 'Slim Shady' <%(email)s>" % person).encode("utf-8"))
+
+        irc.reply(f"{person['username']} 'Slim Shady' <{person['emails'][0]}>")
 
     himynameis = wrap(himynameis, ["text"])
 
@@ -632,14 +656,10 @@ class Fedora(callbacks.Plugin):
             irc.reply("There is no time! Kneel before zod!")
             return
 
-        try:
-            person = self.fasclient.person_by_username(name)
-        except Exception:
-            irc.reply('Error getting info user user: "%s"' % name)
-            return
+        person = self._get_person_by_username(irc, name)
         if not person:
-            irc.reply('User "%s" doesn\'t exist' % name)
             return
+
         timezone_name = person["timezone"]
         if timezone_name is None:
             irc.reply('User "%s" doesn\'t share their timezone' % name)
@@ -660,55 +680,71 @@ class Fedora(callbacks.Plugin):
         """<username>
 
         Return information on a Fedora Account System username."""
-        try:
-            person = self.fasclient.person_by_username(name)
-        except Exception:
-            irc.reply('Error getting info for user: "%s"' % name)
-            return
+
+        person = self._get_person_by_username(irc, name)
         if not person:
-            irc.reply('User "%s" doesn\'t exist' % name)
             return
-        person["creation"] = person["creation"].split(" ")[0]
-        string = (
-            "User: %(username)s, Name: %(human_name)s"
-            ", email: %(email)s, Creation: %(creation)s"
-            ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
-            ", Locale: %(locale)s"
-            ", GPG key ID: %(gpg_keyid)s, Status: %(status)s"
-        ) % person
-        irc.reply(string.encode("utf-8"))
 
-        # List of unapproved groups is easy
-        unapproved = ""
-        for group in person["unapproved_memberships"]:
-            unapproved = unapproved + "%s " % group["name"]
-        if unapproved != "":
-            irc.reply("Unapproved Groups: %s" % unapproved)
-
-        # List of approved groups requires a separate query to extract roles
-        constraints = {"username": name, "group": "%", "role_status": "approved"}
-        columns = ["username", "group", "role_type"]
-        roles = []
-        try:
-            roles = self.fasclient.people_query(
-                constraints=constraints, columns=columns
+        if self.registryValue("use_fasjson"):
+            irc.reply(str(person))
+            irc.reply(
+                f"User: {person.get('username')}, "
+                f"Name: {person.get('human_name')}, "
+                f"Email: {' and '.join(e for e in person['emails'] or ['None'])}, "
+                f"Creation: {person.get('creation')}, "
+                f"IRC Nicks: {' and '.join(n for n in person['ircnicks'] or ['None'])}, "
+                f"Timezone: {person.get('timezone')}, "
+                f"Locale: {person.get('locale')}, "
+                f"GPG Key IDs: {' and '.join(k for k in person['gpgkeyids'] or ['None'])}, "
+                f"Status: {person.get('status')}"
             )
-        except Exception:
-            irc.reply("Error getting group memberships.")
-            return
 
-        approved = ""
-        for role in roles:
-            if role["role_type"] == "sponsor":
-                approved += "+" + role["group"] + " "
-            elif role["role_type"] == "administrator":
-                approved += "@" + role["group"] + " "
-            else:
-                approved += role["group"] + " "
-        if approved == "":
-            approved = "None"
+            groups = self.fasjsonclient.list_user_groups(username=name).result
+            irc.reply(f"Groups: {', '.join(g['groupname'] for g in groups)}")
+        else:
+            # groups and stuff are different in fasjson, so leave
+            # the FAS stuff here til we are ready
+            person["creation"] = person["creation"].split(" ")[0]
+            string = (
+                "User: %(username)s, Name: %(human_name)s"
+                ", email: %(email)s, Creation: %(creation)s"
+                ", IRC Nick: %(ircnick)s, Timezone: %(timezone)s"
+                ", Locale: %(locale)s"
+                ", GPG key ID: %(gpg_keyid)s, Status: %(status)s"
+            ) % person
+            irc.reply(string.encode("utf-8"))
 
-        irc.reply("Approved Groups: %s" % approved)
+            # List of unapproved groups is easy
+            unapproved = ""
+            for group in person["unapproved_memberships"]:
+                unapproved = unapproved + "%s " % group["name"]
+            if unapproved != "":
+                irc.reply("Unapproved Groups: %s" % unapproved)
+
+            # List of approved groups requires a separate query to extract roles
+            constraints = {"username": name, "group": "%", "role_status": "approved"}
+            columns = ["username", "group", "role_type"]
+            roles = []
+            try:
+                roles = self.fasclient.people_query(
+                    constraints=constraints, columns=columns
+                )
+            except Exception:
+                irc.reply("Error getting group memberships.")
+                return
+
+            approved = ""
+            for role in roles:
+                if role["role_type"] == "sponsor":
+                    approved += "+" + role["group"] + " "
+                elif role["role_type"] == "administrator":
+                    approved += "@" + role["group"] + " "
+                else:
+                    approved += role["group"] + " "
+            if approved == "":
+                approved = "None"
+
+            irc.reply("Approved Groups: %s" % approved)
 
     fasinfo = wrap(fasinfo, ["text"])
 
@@ -1053,14 +1089,11 @@ class Fedora(callbacks.Plugin):
         """<username>
 
         Return MediaWiki link syntax for a FAS user's page on the wiki."""
-        try:
-            person = self.fasclient.person_by_username(name)
-        except Exception:
-            irc.reply('Error getting info for user: "%s"' % name)
-            return
+
+        person = self._get_person_by_username(irc, name)
         if not person:
-            irc.reply('User "%s" doesn\'t exist' % name)
             return
+
         string = "[[User:%s|%s]]" % (person["username"], person["human_name"] or "")
         irc.reply(string.encode("utf-8"))
 
