@@ -180,10 +180,6 @@ class Fedora(callbacks.Plugin):
         self.username = self.registryValue("fas.username")
         self.password = self.registryValue("fas.password")
 
-        self.fasclient = AccountSystem(
-            self.fasurl, username=self.username, password=self.password
-        )
-
         # Use FASJSON
         if self.registryValue("use_fasjson"):
             try:
@@ -196,6 +192,10 @@ class Fedora(callbacks.Plugin):
                     "fasjson client with error: %s" % e
                 )
                 return {}
+        else:
+            self.fasclient = AccountSystem(
+                self.fasurl, username=self.username, password=self.password
+            )
 
         # URLs
         # self.url = {}
@@ -686,7 +686,6 @@ class Fedora(callbacks.Plugin):
             return
 
         if self.registryValue("use_fasjson"):
-            irc.reply(str(person))
             irc.reply(
                 f"User: {person.get('username')}, "
                 f"Name: {person.get('human_name')}, "
@@ -752,11 +751,26 @@ class Fedora(callbacks.Plugin):
         """<group short name>
 
         Return information about a Fedora Account System group."""
-        try:
-            group = self.fasclient.group_by_name(name)
-            irc.reply("%s: %s" % (name, group["display_name"]))
-        except AppError:
-            irc.reply('There is no group "%s".' % name)
+
+        if self.registryValue("use_fasjson"):
+            try:
+                group = self.fasjsonclient.get_group(groupname=name).result
+            except fasjson_client.errors.APIError as e:
+                if e.code == 404:
+                    irc.reply(f"Sorry, but group '{name}' does not exist")
+                    return
+                else:
+                    irc.reply("Something blew up, please try again")
+                    self.log.error(e)
+                    return
+
+            irc.reply(f"{group['groupname']}: {group['description']}")
+        else:
+            try:
+                group = self.fasclient.group_by_name(name)
+                irc.reply("%s: %s" % (name, group["display_name"]))
+            except AppError:
+                irc.reply('There is no group "%s".' % name)
 
     group = wrap(group, ["text"])
 
@@ -764,16 +778,18 @@ class Fedora(callbacks.Plugin):
         """<group short name>
 
         Return the administrators list for the selected group"""
-
-        try:
-            group = self.fasclient.group_members(name)
-            sponsors = ""
-            for person in group:
-                if person["role_type"] == "administrator":
-                    sponsors += person["username"] + " "
-            irc.reply("Administrators for %s: %s" % (name, sponsors))
-        except AppError:
-            irc.reply("There is no group %s." % name)
+        if self.registryValue("use_fasjson"):
+            irc.reply("Groups no longer have admins. try the 'sponsors' command ")
+        else:
+            try:
+                group = self.fasclient.group_members(name)
+                sponsors = ""
+                for person in group:
+                    if person["role_type"] == "administrator":
+                        sponsors += person["username"] + " "
+                irc.reply("Administrators for %s: %s" % (name, sponsors))
+            except AppError:
+                irc.reply("There is no group %s." % name)
 
     admins = wrap(admins, ["text"])
 
@@ -782,17 +798,33 @@ class Fedora(callbacks.Plugin):
 
         Return the sponsors list for the selected group"""
 
-        try:
-            group = self.fasclient.group_members(name)
-            sponsors = ""
-            for person in group:
-                if person["role_type"] == "sponsor":
-                    sponsors += person["username"] + " "
-                elif person["role_type"] == "administrator":
-                    sponsors += "@" + person["username"] + " "
-            irc.reply("Sponsors for %s: %s" % (name, sponsors))
-        except AppError:
-            irc.reply("There is no group %s." % name)
+        if self.registryValue("use_fasjson"):
+            try:
+                sponsors = self.fasjsonclient.list_group_sponsors(groupname=name).result
+            except fasjson_client.errors.APIError as e:
+                if e.code == 404:
+                    irc.reply(f"Sorry, but group '{name}' does not exist")
+                    return
+                else:
+                    irc.reply("Something blew up, please try again")
+                    self.log.error(e)
+                    return
+
+            irc.reply(
+                f"Sponsors for {name}: {', '.join(s['username'] for s in sponsors)}"
+            )
+        else:
+            try:
+                group = self.fasclient.group_members(name)
+                sponsors = ""
+                for person in group:
+                    if person["role_type"] == "sponsor":
+                        sponsors += person["username"] + " "
+                    elif person["role_type"] == "administrator":
+                        sponsors += "@" + person["username"] + " "
+                irc.reply("Sponsors for %s: %s" % (name, sponsors))
+            except AppError:
+                irc.reply("There is no group %s." % name)
 
     sponsors = wrap(sponsors, ["text"])
 
@@ -800,19 +832,33 @@ class Fedora(callbacks.Plugin):
         """<group short name>
 
         Return a list of members of the specified group"""
-        try:
-            group = self.fasclient.group_members(name)
-            members = ""
-            for person in group:
-                if person["role_type"] == "administrator":
-                    members += "@" + person["username"] + " "
-                elif person["role_type"] == "sponsor":
-                    members += "+" + person["username"] + " "
+        if self.registryValue("use_fasjson"):
+            try:
+                members = self.fasjsonclient.list_group_members(groupname=name).result
+            except fasjson_client.errors.APIError as e:
+                if e.code == 404:
+                    irc.reply(f"Sorry, but group '{name}' does not exist")
+                    return
                 else:
-                    members += person["username"] + " "
-            irc.reply("Members of %s: %s" % (name, members))
-        except AppError:
-            irc.reply("There is no group %s." % name)
+                    irc.reply("Something blew up, please try again")
+                    self.log.error(e)
+                    return
+
+            irc.reply(f"Members of {name}: {', '.join(m['username'] for m in members)}")
+        else:
+            try:
+                group = self.fasclient.group_members(name)
+                members = ""
+                for person in group:
+                    if person["role_type"] == "administrator":
+                        members += "@" + person["username"] + " "
+                    elif person["role_type"] == "sponsor":
+                        members += "+" + person["username"] + " "
+                    else:
+                        members += person["username"] + " "
+                irc.reply("Members of %s: %s" % (name, members))
+            except AppError:
+                irc.reply("There is no group %s." % name)
 
     members = wrap(members, ["text"])
 
