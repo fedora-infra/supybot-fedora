@@ -55,6 +55,22 @@ conf.registerGlobalValue(
         "", "List of channels where not to admonish naked pings"
     ),
 )
+conf.registerGlobalValue(
+    Fedora,
+    "hey_guys_admonition",
+    registry.String(
+        "https://heyguys.cc/",
+        """Response to people who use 'hey guys' or variants in channel.""",
+    ),
+)
+conf.registerGlobalValue(
+    Fedora,
+    "guys_channels",
+    registry.CommaSeparatedListOfStrings(
+        "", "List of channels where not to admonish people using 'hey guys'"
+    ),
+)
+
 
 conf.registerGlobalValue(
     Fedora,

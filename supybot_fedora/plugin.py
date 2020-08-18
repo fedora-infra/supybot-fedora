@@ -942,6 +942,14 @@ class Fedora(callbacks.Plugin):
                 if word[-2:] in self.karma_tokens:
                     self._do_karma(irc, channel, agent, word, line, explicit=False)
 
+        guys_channels = self.registryValue("guys_channels")
+        if irc.isChannel(channel) and channel not in guys_channels:
+            self.correct_guys(line)
+            pattern = r"\w* ?[:,] ?h(ey|ello|i) guys\W*$"
+            if re.match(pattern, line):
+                admonition = self.registryValue("hey_guys_admonition")
+                irc.reply(admonition)
+
         blacklist = self.registryValue("naked_ping_channel_blacklist")
         if irc.isChannel(channel) and channel not in blacklist:
             # Also, handle naked pings for
