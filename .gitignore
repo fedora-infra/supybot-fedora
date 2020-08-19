@@ -8,3 +8,5 @@ conf
 logs
 *.egg-info/
 .vagrant/
+test-conf/
+test-logs/
