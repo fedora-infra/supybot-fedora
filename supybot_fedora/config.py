@@ -91,7 +91,7 @@ conf.registerGlobalValue(
     Fedora.fasjson,
     "url",
     registry.String(
-        "http://fasjson.example.test/fasjson", """URL for the FASJSON API""",
+        "https://fasjson.fedoraproject.org/", """URL for the FASJSON API""",
     ),
 )
 
