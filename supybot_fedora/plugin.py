@@ -219,7 +219,7 @@ class Fedora(callbacks.Plugin):
             self.users = []
             self.faslist = {}
             self.nickmap = {}
-            for user in self.fasjsonclient.list_all_entities("users"):
+            for user in self.fasjsonclient.list_users().result:
                 name = user["username"]
                 self.users.append(name)
                 key = " ".join(
@@ -227,7 +227,7 @@ class Fedora(callbacks.Plugin):
                         user["username"],
                         user["emails"][0],
                         user["human_name"] or "",
-                        user["ircnicks"][0] or "",
+                        user["ircnicks"][0] or "" if user["ircnicks"] else "",
                     ]
                 )
                 value = "%s '%s' <%s>" % (
@@ -236,7 +236,8 @@ class Fedora(callbacks.Plugin):
                     user["emails"][0] or "",
                 )
                 self.faslist[key] = value
-                for nick in user.get("ircnicks", []):
+                nicks = user.get("ircnicks", []) if user["ircnicks"] else []
+                for nick in nicks:
                     self.nickmap[nick] = name
         else:
             # leave this untouched for now, will remove when FAS finally disappears
