@@ -873,7 +873,7 @@ class Fedora(callbacks.Plugin):
         text = utils.web.getUrl(url, size=size)
         parser = Title()
         try:
-            parser.feed(text)
+            parser.feed(text.decode())
         except sgmllib.SGMLParseError:
             irc.reply(format("Encountered a problem parsing %u", url))
         if parser.title:
