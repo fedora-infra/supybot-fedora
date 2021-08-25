@@ -62,6 +62,14 @@ conf.registerGlobalValue(
     registry.Boolean(True, "Use FasJSON for accounts data rather than FAS"),
 )
 
+conf.registerGlobalValue(
+    Fedora,
+    "fedocal_url",
+    registry.String(
+        "https://calendar.fedoraproject.org/",
+        """URL for fedocal / Fedora Calendar""",
+    ),
+)
 
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Fedora, 'someConfigVariableName',
