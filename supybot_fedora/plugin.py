@@ -204,6 +204,8 @@ class Fedora(callbacks.Plugin):
 
         self.karma_tokens = ("++", "--") if self.allow_negative else ("++",)
 
+        self.fedocal_url = self.registryValue("fedocal_url")
+
         # fetch necessary caches
         self._refresh()
 
@@ -1177,7 +1179,7 @@ class Fedora(callbacks.Plugin):
 
         persons = list(get_persons())
 
-        url = "https://apps.fedoraproject.org/calendar/release-engineering/"
+        url = f"{self.fedocal_url}release-engineering/"
 
         if not persons:
             response = "Nobody is listed as being on push duty right now..."
@@ -1188,7 +1190,7 @@ class Fedora(callbacks.Plugin):
         persons = ", ".join(persons)
         response = "The following people are on push duty: %s" % persons
         irc.reply(response.encode("utf-8"))
-        irc.reply("- " + url.encode("utf-8"))
+        irc.reply(f"- {url}")
 
     pushduty = wrap(pushduty)
 
@@ -1208,15 +1210,15 @@ class Fedora(callbacks.Plugin):
         if not persons:
             response = "Nobody is listed as being on vacation right now..."
             irc.reply(response.encode("utf-8"))
-            url = "https://apps.fedoraproject.org/calendar/vacation/"
-            irc.reply("- " + url.encode("utf-8"))
+            url = f"{self.fedocal_url}vacation/"
+            irc.reply(f"- {url}")
             return
 
         persons = ", ".join(persons)
         response = "The following people are on vacation: %s" % persons
         irc.reply(response.encode("utf-8"))
-        url = "https://apps.fedoraproject.org/calendar/vacation/"
-        irc.reply("- " + url.encode("utf-8"))
+        url = f"{self.fedocal_url}vacation/"
+        irc.reply(f"- {url}")
 
     vacation = wrap(vacation)
 
@@ -1225,14 +1227,15 @@ class Fedora(callbacks.Plugin):
         Return the next meetings scheduled for any channel(s).
         """
         irc.reply("One moment, please...  Looking up the channel list.")
-        url = "https://apps.fedoraproject.org/calendar/api/locations/"
+        url = f"{self.fedocal_url}api/locations/"
         locations = requests.get(url).json()["locations"]
+        self.log.error(f'{locations}')
         meetings = sorted(
             chain(
                 *[
                     self._future_meetings(location)
                     for location in locations
-                    if "irc.freenode.net" in location
+                    if "irc.libera.chat" in location
                 ]
             ),
             key=itemgetter(0),
@@ -1274,17 +1277,16 @@ class Fedora(callbacks.Plugin):
                 arrow.get(date).humanize(),
             )
             irc.reply(response.encode("utf-8"))
-        base = "https://apps.fedoraproject.org/calendar/location/"
-        url = base + urllib.parse.quote("%s@irc.freenode.net/" % channel)
+        base = f"{self.fedocal_url}location/"
+        url = base + urllib.parse.quote("%s@irc.libera.chat/" % channel)
         irc.reply("- " + url.encode("utf-8"))
 
     nextmeeting = wrap(nextmeeting, ["text"])
 
-    @staticmethod
-    def _future_meetings(location):
-        if not location.endswith("@irc.freenode.net"):
-            location = "%s@irc.freenode.net" % location
-        meetings = Fedora._query_fedocal(location=location)
+    def _future_meetings(self, location):
+        if not location.endswith("@irc.libera.chat"):
+            location = "%s@irc.libera.chat" % location
+        meetings = self._query_fedocal(location=location)
         now = datetime.datetime.utcnow()
 
         for meeting in meetings:
@@ -1294,9 +1296,8 @@ class Fedora(callbacks.Plugin):
             if now < dt:
                 yield dt, meeting
 
-    @staticmethod
-    def _meetings_for(calendar):
-        meetings = Fedora._query_fedocal(calendar=calendar)
+    def _meetings_for(self, calendar):
+        meetings = self._query_fedocal(calendar=calendar)
         now = datetime.datetime.utcnow()
 
         for meeting in meetings:
@@ -1311,9 +1312,8 @@ class Fedora(callbacks.Plugin):
             if now >= start and now <= end:
                 yield meeting
 
-    @staticmethod
-    def _query_fedocal(**kwargs):
-        url = "https://apps.fedoraproject.org/calendar/api/meetings"
+    def _query_fedocal(self, **kwargs):
+        url = f"{self.fedocal_url}api/meetings"
         return requests.get(url, params=kwargs).json()["meetings"]
 
     def badges(self, irc, msg, args, name):
