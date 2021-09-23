@@ -1229,7 +1229,7 @@ class Fedora(callbacks.Plugin):
         irc.reply("One moment, please...  Looking up the channel list.")
         url = f"{self.fedocal_url}api/locations/"
         locations = requests.get(url).json()["locations"]
-        self.log.error(f'{locations}')
+        self.log.error(f"{locations}")
         meetings = sorted(
             chain(
                 *[
