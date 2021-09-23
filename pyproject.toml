@@ -50,6 +50,8 @@ bandit = "^1.6"
 black = {version = "^19.10b0", allow-prereleases = true}
 flake8 = "^3.7"
 pytest-mock = "^3.0.0"
+tox-backticks = "^0.3.0"
+
 
 [tool.poetry.plugins."limnoria.plugins"]
 "Fedora" = "supybot_fedora"
