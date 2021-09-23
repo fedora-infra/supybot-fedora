@@ -207,7 +207,8 @@ class Fedora(callbacks.Plugin):
         self.fedocal_url = self.registryValue("fedocal_url")
 
         # fetch necessary caches
-        self._refresh()
+        if self.registryValue("fasjson.refresh_cache_on_startup"):
+            self._refresh()
 
         # Pull in /etc/fedmsg.d/ so we can build the fedmsg.meta processors.
         # fm_config = fedmsg.config.load_config()

@@ -27,13 +27,14 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
-from supybot import test, world
+from supybot import test, world, conf
 
 world.myVerbose = test.verbosity.MESSAGES
 
 
-class FedoraTestCase(test.PluginTestCase):
+class FedoraTestCase(test.ChannelPluginTestCase):
     plugins = ("Fedora",)
+    conf.supybot.plugins.Fedora.fasjson.refresh_cache_on_startup.setValue(False)
 
     def testRandom(self):
         self.assertRaises(ValueError)

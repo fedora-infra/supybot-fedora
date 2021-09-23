@@ -102,6 +102,15 @@ conf.registerGlobalValue(
     ),
 )
 
+conf.registerGlobalValue(
+    Fedora.fasjson,
+    "refresh_cache_on_startup",
+    registry.Boolean(
+        True,
+        "Refresh the FASJSON cache on startup. (typically only turned off for testing purposes)",
+    ),
+)
+
 conf.registerGroup(Fedora, "github")
 conf.registerGlobalValue(
     Fedora.github,
