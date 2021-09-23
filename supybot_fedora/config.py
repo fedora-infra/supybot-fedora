@@ -66,8 +66,7 @@ conf.registerGlobalValue(
     Fedora,
     "fedocal_url",
     registry.String(
-        "https://calendar.fedoraproject.org/",
-        """URL for fedocal / Fedora Calendar""",
+        "https://calendar.fedoraproject.org/", """URL for fedocal / Fedora Calendar""",
     ),
 )
 
