@@ -4,6 +4,7 @@
 *.swp
 dist
 .tox
+.coverage
 conf
 logs
 *.egg-info/
