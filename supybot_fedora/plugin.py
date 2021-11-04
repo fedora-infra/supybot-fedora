@@ -99,6 +99,26 @@ def datagrepper_query(kwargs):
     return result
 
 
+def get_ircnicks(user):
+    """Extract the IRC nick from the IPA format.
+
+    Supported formats:
+    - irc:/nickname
+    - irc://servername.tld/nickname
+    - nickname
+    """
+    if not user.get("ircnicks"):
+        return []
+    return [
+        urllib.parse.urlparse(n).path[1:]
+        for n in user["ircnicks"]
+        if n.startswith("irc:/")
+    ] + [
+        # Legacy format
+        n for n in user["ircnicks"] if ":/" not in n
+    ]
+
+
 class WorkerThread(world.SupyThread):
     """ A simple worker thread for our threadpool. """
 
@@ -225,12 +245,13 @@ class Fedora(callbacks.Plugin):
             for user in self.fasjsonclient.list_users().result:
                 name = user["username"]
                 self.users.append(name)
+                nicks = get_ircnicks(user)
                 key = " ".join(
                     [
                         user["username"],
                         user["emails"][0],
                         user["human_name"] or "",
-                        user["ircnicks"][0] or "" if user["ircnicks"] else "",
+                        nicks[0] if nicks else "",
                     ]
                 )
                 value = "%s '%s' <%s>" % (
@@ -239,7 +260,6 @@ class Fedora(callbacks.Plugin):
                     user["emails"][0] or "",
                 )
                 self.faslist[key] = value
-                nicks = user.get("ircnicks", []) if user["ircnicks"] else []
                 for nick in nicks:
                     self.nickmap[nick] = name
         else:
@@ -690,12 +710,13 @@ class Fedora(callbacks.Plugin):
             return
 
         if self.registryValue("use_fasjson"):
+            nicks = get_ircnicks(person)
             irc.reply(
                 f"User: {person.get('username')}, "
                 f"Name: {person.get('human_name')}, "
                 f"Email: {' and '.join(e for e in person['emails'] or ['None'])}, "
                 f"Creation: {person.get('creation')}, "
-                f"IRC Nicks: {' and '.join(n for n in person['ircnicks'] or ['None'])}, "
+                f"IRC Nicks: {' and '.join(n for n in nicks or ['None'])}, "
                 f"Timezone: {person.get('timezone')}, "
                 f"Locale: {person.get('locale')}, "
                 f"GPG Key IDs: {' and '.join(k for k in person['gpgkeyids'] or ['None'])}, "

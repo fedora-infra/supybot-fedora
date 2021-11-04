@@ -27,17 +27,80 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ###
 
+import os
+from unittest import mock
+from tempfile import TemporaryDirectory
+
 from supybot import test, world, conf
 
 world.myVerbose = test.verbosity.MESSAGES
 
 
+class FASJSONResult:
+    def __init__(self, result):
+        self.result = result
+
+
 class FedoraTestCase(test.ChannelPluginTestCase):
     plugins = ("Fedora",)
-    conf.supybot.plugins.Fedora.fasjson.refresh_cache_on_startup.setValue(False)
+
+    def setUp(self):
+        conf.supybot.plugins.Fedora.fasjson.refresh_cache_on_startup.setValue(False)
+        self.fasjson_client = mock.Mock()
+        with mock.patch(
+            "supybot_fedora.plugin.fasjson_client"
+        ) as fasjson_client_module:
+            fasjson_client_module.Client.return_value = self.fasjson_client
+            super().setUp()
+        self.instance = self.irc.getCallback("Fedora")
+        self.tmpdir = TemporaryDirectory()
+        conf.supybot.plugins.Fedora.karma.db_path.setValue(
+            os.path.join(self.tmpdir.name, "karma.db")
+        )
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+        super().tearDown()
 
     def testRandom(self):
         self.assertRaises(ValueError)
+
+    def testKarma(self):
+        self.instance.users = ["dummy", "test"]
+        self.instance.nickmap = {"dummy": "dummy"}
+        expected = (
+            "Karma for dummy changed to 1 (for the current release cycle):  "
+            "https://badges.fedoraproject.org/badge/macaron-cookie-i"
+        )
+        self.assertResponse("dummy++", expected)
+
+    def testKarmaActorNotInFAS(self):
+        self.instance.users = ["dummy"]
+        self.instance.nickmap = {"dummy": "dummy"}
+        self.assertResponse("dummy++", "Couldn't find test in FAS")
+
+    def testKarmaTargetNotInFAS(self):
+        self.instance.users = ["test"]
+        self.instance.nickmap = {}
+        self.assertResponse("dummy++", "Couldn't find dummy in FAS")
+
+    def testRefreshIRCNickFormat(self):
+        nickformats = ["irc:/dummy", "irc://irc.libera.chat/dummy"]
+        for nick in nickformats:
+            result = FASJSONResult(
+                [
+                    {
+                        "username": "dummy",
+                        "emails": ["dummy@example.com"],
+                        "ircnicks": [nick],
+                        "human_name": None,
+                    }
+                ]
+            )
+            self.instance.fasjsonclient.list_users.return_value = result
+            self.instance._refresh()
+            self.assertEqual(self.instance.users, ["dummy"])
+            self.assertEqual(self.instance.nickmap, {"dummy": "dummy"})
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
