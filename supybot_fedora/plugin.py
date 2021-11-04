@@ -191,7 +191,7 @@ class Fedora(callbacks.Plugin):
                     "Something went wrong setting up "
                     "fasjson client with error: %s" % e
                 )
-                return {}
+                raise
         else:
             self.fasclient = AccountSystem(
                 self.fasurl, username=self.username, password=self.password
