@@ -81,7 +81,7 @@ def cmp(a, b):
 
 
 def datagrepper_query(kwargs):
-    """ Return the count of msgs filtered by kwargs for a given time.
+    """Return the count of msgs filtered by kwargs for a given time.
 
     The arguments for this are a little clumsy; this is imposed on us by
     multiprocessing.Pool.
@@ -115,7 +115,9 @@ def get_ircnicks(user):
         if n.startswith("irc:/")
     ] + [
         # Legacy format
-        n for n in user["ircnicks"] if ":/" not in n
+        n
+        for n in user["ircnicks"]
+        if ":/" not in n
     ]
 
 
@@ -132,7 +134,7 @@ class WorkerThread(world.SupyThread):
 
 
 class ThreadPool(object):
-    """ Our very own threadpool implementation.
+    """Our very own threadpool implementation.
 
     We make our own thing because multiprocessing is too heavy.
     """
@@ -928,7 +930,7 @@ class Fedora(callbacks.Plugin):
     swedish = wrap(swedish)
 
     def invalidCommand(self, irc, msg, tokens):
-        """ Handle any command not otherwise handled.
+        """Handle any command not otherwise handled.
 
         We use this to accept karma commands directly.
         """
@@ -944,7 +946,7 @@ class Fedora(callbacks.Plugin):
                 self._do_karma(irc, channel, agent, word, line, explicit=True)
 
     def doPrivmsg(self, irc, msg):
-        """ Handle everything.
+        """Handle everything.
 
         The name is misleading.  This hook actually gets called for all
         IRC activity in every channel.
