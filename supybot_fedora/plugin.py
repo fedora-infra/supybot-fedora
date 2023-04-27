@@ -1040,8 +1040,9 @@ class Fedora(callbacks.Plugin):
 
         irc.reply(
             "Karma for %s has been increased %i times and "
-            "decreased %i times this release cycle for a "
-            "total of %i (%i all time)" % (name, inc, dec, total, alltime_total)
+            "decreased %i times for release cycle %s for a "
+            "total of %i (%i all time)" % (name, inc, dec, release,
+                                           total, alltime_total)
         )
 
     karma = wrap(karma, ["text"])
@@ -1155,7 +1156,7 @@ class Fedora(callbacks.Plugin):
         url = self.registryValue("karma.url")
         irc.reply(
             "Karma for %s changed to %r "
-            "(for the current release cycle):  %s" % (recip, total_this_release, url)
+            "(for the release cycle %s):  %s" % (recip, total_this_release, release, url)
         )
 
     def wikilink(self, irc, msg, args, name):

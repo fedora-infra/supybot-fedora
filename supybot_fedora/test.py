@@ -65,11 +65,12 @@ class FedoraTestCase(test.ChannelPluginTestCase):
     def testRandom(self):
         self.assertRaises(ValueError)
 
-    def testKarma(self):
+    @mock.patch("supybot_fedora.plugin.Fedora.get_current_release", return_value="f38")
+    def testKarma(self, mock_get_current_release):
         self.instance.users = ["dummy", "test"]
         self.instance.nickmap = {"dummy": "dummy"}
         expected = (
-            "Karma for dummy changed to 1 (for the current release cycle):  "
+            "Karma for dummy changed to 1 (for the release cycle f38):  "
             "https://badges.fedoraproject.org/badge/macaron-cookie-i"
         )
         self.assertResponse("dummy++", expected)
