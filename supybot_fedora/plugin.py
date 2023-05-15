@@ -1017,8 +1017,8 @@ class Fedora(callbacks.Plugin):
             data = self.open_karma_db()
             if name in self.nickmap:
                 name = self.nickmap[name]
-            release = self.get_current_release()
-            votes = data["backwards-" + release].get(name, {})
+            current_release = self.get_current_release()
+            votes = data["backwards-" + current_release].get(name, {})
             alltime = []
             for key in data:
                 if "backwards-" not in key:
@@ -1041,7 +1041,7 @@ class Fedora(callbacks.Plugin):
         irc.reply(
             "Karma for %s has been increased %i times and "
             "decreased %i times for release cycle %s for a "
-            "total of %i (%i all time)" % (name, inc, dec, release,
+            "total of %i (%i all time)" % (name, inc, dec, current_release,
                                            total, alltime_total)
         )
 
