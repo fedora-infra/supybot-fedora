@@ -66,7 +66,8 @@ conf.registerGlobalValue(
     Fedora,
     "fedocal_url",
     registry.String(
-        "https://calendar.fedoraproject.org/", """URL for fedocal / Fedora Calendar""",
+        "https://calendar.fedoraproject.org/",
+        """URL for fedocal / Fedora Calendar""",
     ),
 )
 
@@ -98,7 +99,8 @@ conf.registerGlobalValue(
     Fedora.fasjson,
     "url",
     registry.String(
-        "https://fasjson.fedoraproject.org/", """URL for the FASJSON API""",
+        "https://fasjson.fedoraproject.org/",
+        """URL for the FASJSON API""",
     ),
 )
 
