@@ -122,7 +122,7 @@ def get_ircnicks(user):
 
 
 class WorkerThread(world.SupyThread):
-    """ A simple worker thread for our threadpool. """
+    """A simple worker thread for our threadpool."""
 
     def __init__(self, fn, item, *args, **kwargs):
         self.fn = fn
@@ -473,7 +473,10 @@ class Fedora(callbacks.Plugin):
             if field:
                 link = dict(
                     [
-                        (part.split("; ")[1][5:-1], part.split("; ")[0][1:-1],)
+                        (
+                            part.split("; ")[1][5:-1],
+                            part.split("; ")[0][1:-1],
+                        )
                         for part in field.split(", ")
                     ]
                 )
@@ -1041,8 +1044,8 @@ class Fedora(callbacks.Plugin):
         irc.reply(
             "Karma for %s has been increased %i times and "
             "decreased %i times for release cycle %s for a "
-            "total of %i (%i all time)" % (name, inc, dec, current_release,
-                                           total, alltime_total)
+            "total of %i (%i all time)"
+            % (name, inc, dec, current_release, total, alltime_total)
         )
 
     karma = wrap(karma, ["text"])
@@ -1156,7 +1159,8 @@ class Fedora(callbacks.Plugin):
         url = self.registryValue("karma.url")
         irc.reply(
             "Karma for %s changed to %r "
-            "(for the release cycle %s):  %s" % (recip, total_this_release, release, url)
+            "(for the release cycle %s):  %s"
+            % (recip, total_this_release, release, url)
         )
 
     def wikilink(self, irc, msg, args, name):
@@ -1467,7 +1471,10 @@ class Fedora(callbacks.Plugin):
             quarterly="the 3 months preceding these past three months",
         )
         phrases = dict(
-            daily="24 hours", weekly="week", monthly="month", quarterly="3 months",
+            daily="24 hours",
+            weekly="week",
+            monthly="month",
+            quarterly="3 months",
         )
 
         if count1 and count2:
@@ -1519,7 +1526,7 @@ class Fedora(callbacks.Plugin):
 
 
 class Utils(object):
-    """ Some handy utils for datagrepper visualization. """
+    """Some handy utils for datagrepper visualization."""
 
     @classmethod
     def sparkline(cls, values):
@@ -1539,7 +1546,7 @@ class Utils(object):
 
     @classmethod
     def daterange(cls, start, stop, steps):
-        """ A generator for stepping through time. """
+        """A generator for stepping through time."""
         delta = (stop - start) / steps
         current = start
         while current + delta <= stop:
