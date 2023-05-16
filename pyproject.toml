@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "supybot-fedora"
-version = "0.5.2"
+version = "0.5.3"
 description = "A Lemnoria (supybot) plugin for various Fedora actions"
 
 license = "BSD-3-Clause"
